@@ -6,64 +6,65 @@
   <title>TidelQ — Live Coastal Intelligence | Goa</title>
   <meta name="description" content="Real-time AI-powered coastal intelligence for Goa. Tide forecasts, wave analysis, UV safety, air quality, crowd density — all in one premium dashboard." />
 
-  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Sora:wght@600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
 
-  <!-- MapLibre GL JS -->
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" />
-
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-
-  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Custom Design System (v3) -->
   <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body class="overflow-hidden">
 
-<div id="app" class="flex h-screen w-screen relative" style="z-index:1">
+<div id="app" class="flex h-screen w-screen relative">
 
-  <!-- ══════════════════════════════════════════════════════
-       LEFT SIDEBAR
-  ══════════════════════════════════════════════════════════ -->
+  <!-- WAVE ANIMATION OVERLAY -->
+  <div class="wave-overlay" aria-hidden="true">
+    <svg class="wave wave-1" viewBox="0 0 1440 120" preserveAspectRatio="none">
+      <path d="M0,60 C360,120 720,0 1080,60 C1260,90 1380,30 1440,60 L1440,120 L0,120 Z" fill="rgba(255,213,120,0.07)"/>
+    </svg>
+    <svg class="wave wave-2" viewBox="0 0 1440 120" preserveAspectRatio="none">
+      <path d="M0,80 C240,20 480,100 720,60 C960,20 1200,100 1440,50 L1440,120 L0,120 Z" fill="rgba(56,189,248,0.05)"/>
+    </svg>
+  </div>
+
+  <!-- ══ LEFT SIDEBAR ══ -->
   <aside id="sidebar" class="sidebar flex-shrink-0 flex flex-col h-full">
 
     <!-- Header -->
     <div class="sidebar-header px-6 py-5 flex items-center justify-between">
       <div class="flex items-center gap-3">
         <div class="brand-icon">
-          <svg width="36" height="36" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
             <defs>
               <linearGradient id="brandGrad" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#22d3ee"/>
-                <stop offset="100%" stop-color="#6366f1"/>
+                <stop offset="0%" stop-color="#FFB347"/>
+                <stop offset="50%" stop-color="#FF6B6B"/>
+                <stop offset="100%" stop-color="#4ECDC4"/>
               </linearGradient>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="2" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
             </defs>
-            <polygon points="17,3 31,10 31,24 17,31 3,24 3,10" fill="rgba(56,189,248,0.18)" stroke="url(#brandGrad)" stroke-width="1.6"/>
-            <polygon points="17,9 25,13.5 25,20.5 17,25 9,20.5 9,13.5" fill="rgba(56,189,248,0.4)" stroke="#38bdf8" stroke-width="1"/>
-            <circle cx="17" cy="17" r="4.2" fill="#38bdf8"/>
-            <circle cx="17" cy="17" r="2" fill="#0ea5e9"/>
+            <!-- Shell-like logo -->
+            <circle cx="20" cy="20" r="18" fill="rgba(255,179,71,0.12)" stroke="url(#brandGrad)" stroke-width="1.5"/>
+            <path d="M20 8 Q28 14 28 20 Q28 28 20 32 Q12 28 12 20 Q12 14 20 8Z" fill="rgba(255,179,71,0.25)" stroke="url(#brandGrad)" stroke-width="1"/>
+            <circle cx="20" cy="20" r="5" fill="url(#brandGrad)" filter="url(#glow)"/>
+            <path d="M20 14 Q24 17 24 20 Q24 23 20 26" stroke="rgba(255,255,255,0.4)" stroke-width="0.8" fill="none"/>
           </svg>
         </div>
         <div>
-          <h1 class="font-black text-xl leading-none">TidelQ</h1>
-          <p class="mt-1" style="color:var(--text-2);font-size:10px;font-weight:600;letter-spacing:0.16em;text-transform:uppercase">Coastal Intelligence</p>
+          <h1 class="brand-wordmark">TidelQ</h1>
+          <p class="brand-tagline">Coastal Intelligence</p>
         </div>
       </div>
       <div class="flex items-center gap-2">
-        <button data-auth-btn id="sidebar-auth-btn" onclick="Auth.showModal()" style="
-          background:rgba(14,165,233,0.12); border:1px solid rgba(14,165,233,0.22);
-          color:#38bdf8; padding:6px 12px; border-radius:999px; font-size:11px;
-          font-weight:600; cursor:pointer; font-family:inherit; white-space:nowrap;
-          transition:all .2s;
-        ">🔑 Sign In</button>
-        <div class="flex items-center gap-1.5">
-          <div class="w-2 h-2 rounded-full live-pulse" style="background:#34d399;color:#34d399"></div>
-          <span style="color:#34d399;font-size:10px;font-weight:800;letter-spacing:0.1em">LIVE</span>
+        <button data-auth-btn id="sidebar-auth-btn" onclick="Auth?.showModal()" class="auth-btn">🔑 Sign In</button>
+        <div class="live-badge">
+          <div class="live-dot"></div>
+          <span>LIVE</span>
         </div>
       </div>
     </div>
@@ -71,16 +72,16 @@
     <!-- Quick Stats -->
     <div class="px-5 pt-4 pb-3 grid grid-cols-3 gap-2.5">
       <div class="stat-card">
-        <div style="color:#38bdf8;font-size:9px;font-weight:800;letter-spacing:0.1em;margin-bottom:4px">BEACHES</div>
-        <div id="beaches-count" class="font-display font-black text-xl" style="color:var(--text-1)">40</div>
+        <div class="stat-label" style="color:var(--sun)">BEACHES</div>
+        <div id="beaches-count" class="stat-value">40</div>
       </div>
       <div class="stat-card">
-        <div style="color:#2dd4bf;font-size:9px;font-weight:800;letter-spacing:0.1em;margin-bottom:4px">AVG SCORE</div>
-        <div id="avg-score" class="font-display font-black text-xl" style="color:var(--text-1)">—</div>
+        <div class="stat-label" style="color:var(--coral)">AVG SCORE</div>
+        <div id="avg-score" class="stat-value">—</div>
       </div>
       <div class="stat-card">
-        <div style="color:#fb923c;font-size:9px;font-weight:800;letter-spacing:0.1em;margin-bottom:4px">REPORTS</div>
-        <div id="report-count" class="font-display font-black text-xl" style="color:var(--text-1)">—</div>
+        <div class="stat-label" style="color:var(--seafoam)">REPORTS</div>
+        <div id="report-count" class="stat-value">—</div>
       </div>
     </div>
 
@@ -89,14 +90,23 @@
     <!-- Scrollable Content -->
     <div class="flex-1 overflow-y-auto sidebar-scroll">
 
-      <!-- ── Beach List Panel ── -->
+      <!-- Beach List Panel -->
       <div id="beach-list-panel" class="px-5 py-3">
-        <div class="mb-3 relative">
+        <div class="mb-4">
+          <a href="/issues.html" class="flex items-center justify-between p-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] hover:bg-[rgba(255,255,255,0.06)] transition-all cursor-pointer group">
+            <div class="flex items-center gap-2">
+              <span class="text-lg">📢</span>
+              <span class="font-semibold text-[var(--accent)] group-hover:text-[var(--sun)] transition-colors">Community Issues</span>
+            </div>
+            <span class="text-[var(--text-3)] text-xs font-semibold px-2 py-1 bg-[rgba(255,255,255,0.05)] rounded-full">Vote & Report</span>
+          </a>
+        </div>
+        <div class="mb-3">
           <input type="search" id="beach-search" placeholder="🔍  Search beaches…" class="w-full text-sm focus:outline-none" />
         </div>
         <div class="flex justify-between items-center mb-3">
-          <p style="color:#64748b;font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase">Monitored Beaches</p>
-          <span class="tag">Goa Coast</span>
+          <p class="section-label">Monitored Beaches</p>
+          <span class="chip">Goa Coast</span>
         </div>
         <div id="beach-list" class="flex flex-col gap-2.5">
           <div class="beach-skeleton"></div>
@@ -107,22 +117,18 @@
         </div>
       </div>
 
-      <!-- ── Beach Detail Panel ── -->
+      <!-- Beach Detail Panel -->
       <div id="beach-detail-panel" class="hidden px-5 py-3">
-
-        <!-- Back -->
-        <button id="back-btn" class="flex items-center gap-1.5 mb-4 transition-colors"
-          style="background:none;border:none;color:#38bdf8;font-size:13px;font-weight:600;cursor:pointer;padding:0;font-family:inherit">
+        <button id="back-btn" class="back-btn">
           <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
           </svg>
           All Beaches
         </button>
 
-        <!-- Name + Grade + Badge -->
         <div class="flex items-start justify-between mb-4 gap-3">
           <div class="flex-1 min-w-0">
-            <h2 id="detail-name" class="font-display font-black text-2xl leading-tight" style="color:var(--text-1)">Beach Name</h2>
+            <h2 id="detail-name" class="detail-beach-name">Beach Name</h2>
             <div class="flex items-center gap-2 mt-2 flex-wrap">
               <span id="detail-grade" class="grade-badge grade-b">B+</span>
               <div id="detail-trend" class="flex items-center gap-1.5">
@@ -134,7 +140,6 @@
           <span id="detail-status-badge" class="status-badge caution">CAUTION</span>
         </div>
 
-        <!-- Weather Alert Banner -->
         <div id="weather-alert" class="weather-alert mb-3">
           <span>⚡</span>
           <span id="weather-alert-text">Severe weather detected in this zone</span>
@@ -146,212 +151,75 @@
             <svg width="170" height="170" viewBox="0 0 160 160" class="score-ring-svg">
               <defs>
                 <linearGradient id="scoreGradient" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stop-color="#fb923c"/>
-                  <stop offset="100%" stop-color="#f87171"/>
+                  <stop offset="0%" stop-color="#FFB347"/>
+                  <stop offset="100%" stop-color="#FF6B6B"/>
                 </linearGradient>
               </defs>
-              <circle cx="80" cy="80" r="66" fill="none" stroke="rgba(100,116,139,0.16)" stroke-width="11"/>
+              <circle cx="80" cy="80" r="66" fill="none" stroke="rgba(255,179,71,0.12)" stroke-width="11"/>
               <circle id="score-arc" cx="80" cy="80" r="66" fill="none"
-                stroke="#fb923c" stroke-width="11"
+                stroke="url(#scoreGradient)" stroke-width="11"
                 stroke-dasharray="414.69" stroke-dashoffset="414.69"
                 stroke-linecap="round"
                 transform="rotate(-90 80 80)"
                 class="score-arc-transition"/>
             </svg>
             <div class="score-center absolute inset-0 flex flex-col items-center justify-center">
-              <div id="detail-score" class="font-display font-black leading-none" style="font-size:44px;color:#fb923c">—</div>
-              <div style="color:var(--text-2);font-size:9px;font-weight:800;letter-spacing:0.14em;margin-top:6px;text-transform:uppercase">Safety Score</div>
+              <div id="detail-score" class="score-number">—</div>
+              <div class="score-label">Safety Score</div>
             </div>
           </div>
         </div>
 
-        <!-- Grade Bar -->
-        <div class="mb-5">
-          <div class="flex justify-between mb-2" style="color:var(--text-3);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em">
-            <span>Dangerous</span><span>Safe</span>
-          </div>
-          <div class="grade-track">
-            <div id="grade-indicator" class="grade-indicator" style="left:65%"></div>
-          </div>
-          <div class="flex justify-between mt-2" style="font-size:11px;font-weight:800;font-family:var(--font-display)">
-            <span style="color:#f87171">F</span>
-            <span style="color:#fb923c">D</span>
-            <span style="color:#fbbf24">C</span>
-            <span style="color:#a3e635">B</span>
-            <span style="color:#4ade80">A</span>
-          </div>
-        </div>
-
-        <!-- AI Attribution + Risk Factors + Recommendations -->
-        <div class="ai-panel mb-4">
-          <div class="flex items-center gap-2 mb-2">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
-            </svg>
-            <span style="color:#38bdf8;font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase">AI Analysis</span>
-          </div>
-          <p id="detail-attribution" style="color:#cbd5e1;font-size:13px;line-height:1.6">Analysing environmental data…</p>
-
-          <!-- Risk Factors -->
-          <div id="risk-factors-section" class="mt-3 hidden">
-            <div class="section-header" style="margin-bottom:6px">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              Risk Factors
-            </div>
-            <ul id="risk-factors-list" class="risk-list"></ul>
-          </div>
-
-          <!-- Recommendations -->
-          <div id="recommendations-section" class="mt-3 hidden">
-            <div class="section-header" style="margin-bottom:6px">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-              Recommendations
-            </div>
-            <ul id="recommendations-list" class="rec-list"></ul>
-          </div>
-        </div>
-
-        <!-- ── 🌊 TIDE & WAVE INTELLIGENCE ── -->
-        <div class="section-header mt-4">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M2 12c2-3 4-3 6 0s4 3 6 0 4-3 6 0"/><path d="M2 18c2-3 4-3 6 0s4 3 6 0 4-3 6 0" opacity="0.5"/></svg>
-          Tide &amp; Wave Intelligence
-        </div>
-
-        <!-- Marine Stats -->
-        <div class="grid grid-cols-3 gap-2 mb-2">
-          <div class="satellite-card text-center">
-            <div style="color:var(--text-2);font-size:10px;margin-bottom:3px;font-weight:600">Wave</div>
-            <div id="detail-wave-ht" class="font-display font-bold text-base" style="color:var(--text-1)">—m</div>
-          </div>
-          <div class="satellite-card text-center">
-            <div style="color:var(--text-2);font-size:10px;margin-bottom:3px;font-weight:600">Swell</div>
-            <div id="detail-swell" class="font-display font-bold text-base" style="color:var(--text-1)">—m</div>
-          </div>
-          <div class="satellite-card text-center">
-            <div style="color:var(--text-2);font-size:10px;margin-bottom:3px;font-weight:600">Current</div>
-            <div class="flex items-center justify-center gap-1">
-              <span id="detail-current-vel" class="font-display font-bold text-base" style="color:var(--text-1)">—</span>
-              <span id="detail-current-dir" class="dir-arrow" style="color:#38bdf8">↑</span>
+        <!-- Metrics Grid -->
+        <div class="grid grid-cols-2 gap-2.5 mb-4">
+          <div class="metric-card">
+            <div class="metric-icon">🌊</div>
+            <div>
+              <div class="metric-label">Wave Height</div>
+              <div id="detail-wave" class="metric-value">— m</div>
             </div>
           </div>
-        </div>
-
-        <!-- Tide Windows -->
-        <div id="tide-windows" class="flex flex-wrap gap-1.5 mb-2"></div>
-
-        <!-- Tide Chart -->
-        <div class="tide-card mb-4">
-          <div class="flex items-center justify-between mb-2">
-            <span style="color:var(--text-2);font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase">24h Sea Level</span>
-            <span id="tide-source" style="color:var(--text-3);font-size:10px">Marine API</span>
-          </div>
-          <div style="height:70px">
-            <canvas id="tide-chart"></canvas>
-          </div>
-        </div>
-
-        <!-- ── 🧪 ENVIRONMENT QUALITY ── -->
-        <div class="section-header">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-5"/></svg>
-          Environment &amp; UV Safety
-        </div>
-
-        <div class="grid grid-cols-2 gap-2 mb-4">
-          <!-- EQI Card -->
-          <div class="eqi-card">
-            <div class="flex items-center justify-between mb-2">
-              <span style="color:var(--text-2);font-size:10px;font-weight:700;letter-spacing:0.06em">AIR QUALITY</span>
-              <span id="eqi-grade" style="font-size:11px;font-weight:900;color:#34d399;font-family:var(--font-display)">A</span>
-            </div>
-            <div class="flex items-center gap-3">
-              <div class="eqi-mini-ring">
-                <svg width="50" height="50" viewBox="0 0 48 48">
-                  <circle cx="24" cy="24" r="19" fill="none" stroke="rgba(100,116,139,0.18)" stroke-width="5"/>
-                  <circle id="eqi-arc" cx="24" cy="24" r="19" fill="none"
-                    stroke="#34d399" stroke-width="5"
-                    stroke-dasharray="119.38" stroke-dashoffset="23.88"
-                    stroke-linecap="round" transform="rotate(-90 24 24)"
-                    style="transition: all 1s ease"/>
-                </svg>
-                <div class="absolute inset-0 flex items-center justify-center">
-                  <span id="eqi-value" style="font-size:13px;font-weight:900;color:var(--text-1);font-family:var(--font-display)">80</span>
-                </div>
-              </div>
-              <div>
-                <div style="color:var(--text-2);font-size:10px">PM2.5</div>
-                <div id="detail-pm25" class="text-xs font-semibold" style="color:var(--text-1)">— µg/m³</div>
-                <div style="color:var(--text-2);font-size:10px;margin-top:3px">AQI</div>
-                <div id="detail-aqi" class="text-xs font-semibold" style="color:var(--text-1)">—</div>
-              </div>
+          <div class="metric-card">
+            <div class="metric-icon">☀️</div>
+            <div>
+              <div class="metric-label">UV Index</div>
+              <div id="detail-uv" class="metric-value">—</div>
             </div>
           </div>
-
-          <!-- UV Card -->
-          <div class="uv-gauge">
-            <div class="flex items-center justify-between mb-1">
-              <span style="color:var(--text-2);font-size:10px;font-weight:700;letter-spacing:0.06em">UV INDEX</span>
-              <span id="uv-level" style="font-size:10px;font-weight:700;color:#facc15">Moderate</span>
+          <div class="metric-card">
+            <div class="metric-icon">💧</div>
+            <div>
+              <div class="metric-label">Water Temp</div>
+              <div id="detail-temp" class="metric-value">— °C</div>
             </div>
-            <div class="flex items-baseline gap-2 mb-1">
-              <span id="uv-value" style="font-size:32px;font-weight:900;color:#facc15;line-height:1;font-family:var(--font-display)">5</span>
-              <span style="color:var(--text-3);font-size:10px">/11+</span>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon">🌬️</div>
+            <div>
+              <div class="metric-label">Wind Speed</div>
+              <div id="detail-wind" class="metric-value">— km/h</div>
             </div>
-            <div class="uv-bar-track">
-              <div id="uv-indicator" class="uv-bar-indicator" style="left:45%"></div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon">👥</div>
+            <div>
+              <div class="metric-label">Crowd Level</div>
+              <div id="detail-crowd" class="metric-value">—</div>
             </div>
-            <p id="uv-advice" style="color:var(--text-2);font-size:10px;margin-top:6px;line-height:1.4">Wear sunscreen SPF 30+</p>
           </div>
-        </div>
-
-        <!-- ── 🏖️ CROWD & TOURISM ── -->
-        <div class="section-header">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fb923c" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-          Crowd &amp; Tourism
-        </div>
-
-        <div class="crowd-meter mb-4">
-          <div class="flex items-center justify-between mb-2">
-            <div class="flex items-center gap-2">
-              <span id="crowd-emoji" style="font-size:18px">👥</span>
-              <span id="crowd-level" style="color:var(--text-1);font-size:13px;font-weight:700">Moderate</span>
+          <div class="metric-card">
+            <div class="metric-icon">🔬</div>
+            <div>
+              <div class="metric-label">Turbidity</div>
+              <div id="detail-turb" class="metric-value">— NTU</div>
             </div>
-            <span id="crowd-index" style="color:var(--text-2);font-size:11px;font-weight:600">42/100</span>
-          </div>
-          <div class="crowd-bar-track">
-            <div id="crowd-bar-fill" class="crowd-bar-fill" style="width:42%;background:linear-gradient(90deg,#34d399,#facc15);color:#facc15"></div>
-          </div>
-          <p id="crowd-advice" style="color:var(--text-2);font-size:10px;margin-top:8px;line-height:1.4">Best visited during weekday mornings</p>
-        </div>
-
-        <!-- ── SATELLITE DATA ── -->
-        <div class="section-header">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
-          Satellite Data
-        </div>
-
-        <div class="grid grid-cols-2 gap-2 mb-4">
-          <div class="satellite-card">
-            <div style="color:var(--text-2);font-size:11px;margin-bottom:4px;font-weight:600">Sea Surface Temp</div>
-            <div id="detail-sst" class="font-display font-semibold text-sm" style="color:var(--text-1)">—°C</div>
-          </div>
-          <div class="satellite-card">
-            <div style="color:var(--text-2);font-size:11px;margin-bottom:4px;font-weight:600">Wind Speed</div>
-            <div id="detail-wind" class="font-display font-semibold text-sm" style="color:var(--text-1)">— km/h</div>
-          </div>
-          <div class="satellite-card">
-            <div style="color:var(--text-2);font-size:11px;margin-bottom:4px;font-weight:600">Chlorophyll-a</div>
-            <div id="detail-chlor" class="font-display font-semibold text-sm" style="color:var(--text-1)">— mg/m³</div>
-          </div>
-          <div class="satellite-card">
-            <div style="color:var(--text-2);font-size:11px;margin-bottom:4px;font-weight:600">Turbidity</div>
-            <div id="detail-turb" class="font-display font-semibold text-sm" style="color:var(--text-1)">— NTU</div>
           </div>
         </div>
 
         <!-- Trend Sparkline -->
         <div class="chart-panel mb-4">
           <div class="flex items-center justify-between mb-2">
-            <span style="color:var(--text-2);font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase">7-Day Trend</span>
+            <span class="section-label">7-Day Trend</span>
             <span id="trend-label" style="color:var(--text-3);font-size:11px;font-weight:600">Loading…</span>
           </div>
           <div style="height:75px">
@@ -362,51 +230,44 @@
         <!-- Recent Reports -->
         <div class="mb-4">
           <div class="flex items-center justify-between mb-2">
-            <span style="color:var(--text-2);font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase">Community Reports</span>
-            <a id="report-link-detail" href="/report.html" style="color:#38bdf8;font-size:12px;font-weight:600;text-decoration:none">+ Report</a>
+            <span class="section-label">Community Reports</span>
+            <a id="report-link-detail" href="report.html" class="link-btn">+ Report</a>
           </div>
           <div id="detail-reports" class="flex flex-col gap-2">
             <p style="color:var(--text-3);font-size:12px">Loading reports…</p>
           </div>
         </div>
-
-      </div><!-- /beach-detail-panel -->
-    </div><!-- /sidebar-scroll -->
+      </div>
+    </div>
 
     <!-- Footer CTA -->
     <div class="sidebar-footer px-5 py-4">
       <div class="flex gap-2 mb-2">
-        <a id="report-cta-link" href="/report.html" class="report-cta-btn flex-1">
+        <a id="report-cta-link" href="report.html" class="cta-btn flex-1">
           <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
           </svg>
           Report Hazard
         </a>
-        <a href="/analytics.html" class="report-cta-btn" style="background:linear-gradient(135deg,#7c3aed,#a855f7);flex:0 0 auto;padding:14px 16px;box-shadow:0 6px 20px rgba(168,85,247,0.4),inset 0 1px 0 rgba(255,255,255,0.18)" title="Analytics">
-          📊
-        </a>
+        <a href="analytics.html" class="cta-btn analytics-cta" title="Analytics">📊</a>
       </div>
-      <p class="text-center" style="color:var(--text-3);font-size:11px">TidelQ — Reversing Coastal Decline 🌊</p>
+      <p class="footer-credit">TidelQ — Reversing Coastal Decline 🌊</p>
     </div>
 
   </aside>
 
-  <!-- ══════════════════════════════════════════════════════
-       MAP AREA
-  ══════════════════════════════════════════════════════════ -->
+  <!-- ══ MAP AREA ══ -->
   <div class="flex-1 relative">
-
-    <!-- Map Canvas -->
     <div id="map" class="absolute inset-0"></div>
 
     <!-- Floating Top Bar -->
     <div class="absolute top-4 left-1/2 z-10" style="transform:translateX(-50%)">
       <div class="map-topbar flex items-center gap-3 px-5 py-2.5">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--sun)" stroke-width="2">
           <circle cx="12" cy="10" r="3"/>
           <path d="M12 2a8 8 0 0 0-8 8c0 5.4 7.05 11.5 7.35 11.76a1 1 0 0 0 1.3 0C12.95 21.5 20 15.4 20 10a8 8 0 0 0-8-8z"/>
         </svg>
-        <span style="color:var(--text-1);font-size:13px;font-weight:600;letter-spacing:-0.01em">Goa Coastal Zone</span>
+        <span style="color:var(--text-1);font-size:13px;font-weight:600">Goa Coastal Zone</span>
         <div style="width:1px;height:14px;background:var(--border)"></div>
         <span id="last-updated" style="color:var(--text-2);font-size:11px;font-weight:500">Updating…</span>
       </div>
@@ -425,22 +286,22 @@
     <!-- Legend -->
     <div class="absolute bottom-8 right-5 z-10">
       <div class="map-legend p-4">
-        <p style="color:var(--text-2);font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:12px">Safety Score</p>
+        <p class="section-label mb-3">Safety Score</p>
         <div class="flex flex-col gap-2.5">
           <div class="flex items-center gap-2.5">
-            <div style="width:11px;height:11px;border-radius:50%;background:#34d399;box-shadow:0 0 8px rgba(52,211,153,0.7);flex-shrink:0"></div>
-            <span style="color:#cbd5e1;font-size:12px">Excellent (80–100)</span>
+            <div class="legend-dot" style="background:#4ECDC4;box-shadow:0 0 8px rgba(78,205,196,0.7)"></div>
+            <span style="color:var(--text-2);font-size:12px">Excellent (80–100)</span>
           </div>
           <div class="flex items-center gap-2.5">
-            <div style="width:11px;height:11px;border-radius:50%;background:#fb923c;box-shadow:0 0 8px rgba(251,146,60,0.7);flex-shrink:0"></div>
-            <span style="color:#cbd5e1;font-size:12px">Moderate (50–79)</span>
+            <div class="legend-dot" style="background:#FFB347;box-shadow:0 0 8px rgba(255,179,71,0.7)"></div>
+            <span style="color:var(--text-2);font-size:12px">Moderate (50–79)</span>
           </div>
           <div class="flex items-center gap-2.5">
-            <div style="width:11px;height:11px;border-radius:50%;background:#f87171;box-shadow:0 0 8px rgba(248,113,113,0.7);flex-shrink:0"></div>
-            <span style="color:#cbd5e1;font-size:12px">Poor (0–49)</span>
+            <div class="legend-dot" style="background:#FF6B6B;box-shadow:0 0 8px rgba(255,107,107,0.7)"></div>
+            <span style="color:var(--text-2);font-size:12px">Poor (0–49)</span>
           </div>
         </div>
-        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)" class="flex flex-col gap-1.5">
+        <div class="legend-divider flex flex-col gap-1.5 mt-3 pt-3">
           <div class="flex items-center gap-2">
             <span style="font-size:10px">🟢</span><span style="color:var(--text-2);font-size:10px">Lifeguard Zone</span>
           </div>
@@ -451,60 +312,37 @@
             <span style="font-size:10px">🔷</span><span style="color:var(--text-2);font-size:10px">Safe Entry</span>
           </div>
         </div>
-        <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+        <div class="legend-divider mt-2 pt-2">
           <p style="color:var(--text-4);font-size:10px">© OSM Contributors © CARTO</p>
         </div>
       </div>
     </div>
+  </div>
+</div>
 
-  </div><!-- /map area -->
-
-</div><!-- /app -->
-
-<!-- ══════════════════════════════════════════════════════
-     SOS OVERLAY
-══════════════════════════════════════════════════════════ -->
+<!-- SOS OVERLAY -->
 <div id="sos-overlay" class="sos-overlay">
   <div class="sos-card">
     <div style="font-size:40px;margin-bottom:10px">🆘</div>
     <h2 class="font-display font-black text-2xl mb-1" style="color:var(--text-1)">Emergency SOS</h2>
     <p style="color:var(--text-2);font-size:13px;margin-bottom:18px">Immediate help for coastal emergencies</p>
-
-    <div id="sos-nearest" style="color:#f87171;font-size:12px;font-weight:600;margin-bottom:14px;padding:10px;background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.2);border-radius:12px">
-      📍 Nearest lifeguard: Calculating...
-    </div>
-
+    <div id="sos-nearest" class="sos-nearest">📍 Nearest lifeguard: Calculating...</div>
     <div class="flex flex-col gap-2.5 mb-4">
       <a href="tel:1554" class="sos-btn primary">📞 Coast Guard — 1554</a>
       <a href="tel:100"  class="sos-btn">🚔 Police — 100</a>
       <a href="tel:108"  class="sos-btn">🚑 Ambulance — 108</a>
       <a href="tel:18002331188" class="sos-btn">📱 DISHA Helpline — 1800-233-1188</a>
     </div>
-
-    <div id="sos-gps" style="color:var(--text-3);font-size:11px;font-weight:500;margin-bottom:14px">
-      📍 GPS: Fetching coordinates...
-    </div>
-
-    <button id="sos-close" class="sos-btn" style="background:rgba(248,113,113,0.1);border-color:rgba(248,113,113,0.22);color:#f87171">
-      ✕ Close
-    </button>
+    <div id="sos-gps" style="color:var(--text-3);font-size:11px;font-weight:500;margin-bottom:14px">📍 GPS: Fetching coordinates...</div>
+    <button id="sos-close" class="sos-btn" style="background:rgba(255,107,107,0.1);border-color:rgba(255,107,107,0.22);color:#FF6B6B">✕ Close</button>
   </div>
 </div>
 
-<!-- MapLibre GL JS -->
 <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
-
-<!-- Supabase Browser Client -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-
-<!-- App Scripts -->
 <script src="/js/api.js"></script>
 <script src="/js/auth.js"></script>
-<script>
-  document.addEventListener('DOMContentLoaded', () => Auth.init());
-</script>
+<script>document.addEventListener('DOMContentLoaded', () => Auth?.init());</script>
 <script src="/js/map.js"></script>
-<script src="/js/ui-enhance.js"></script>
-
 </body>
 </html>

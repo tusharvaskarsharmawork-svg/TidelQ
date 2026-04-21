@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // GET /api/beaches — Returns all beaches with current scores & recent reports
 // ═══════════════════════════════════════════════════════════════════════════
-import { getAllBeaches, getReportsForBeach } from '../../../lib/db.js';
+import { getAllBeaches, getReportsForBeach, getTotalReportCount } from '../../../lib/db.js';
 
 const TRENDS = {
   baga: 'stable',
@@ -30,9 +30,12 @@ export default async function handler(req, res) {
       })
     );
 
+    const totalReports = await getTotalReportCount();
+
     res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate');
     return res.status(200).json({
       beaches: enriched,
+      total_reports: totalReports,
       timestamp: new Date().toISOString(),
       mode: process.env.SUPABASE_URL ? 'live' : 'demo',
     });

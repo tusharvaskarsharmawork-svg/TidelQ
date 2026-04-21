@@ -11,8 +11,6 @@
   let _sparkChart = null;
   let _tideChart = null;
   let _map = null;
-  let _markers = {};
-  let _zoneLayers = { lifeguard: [], danger: [], entry: [] };
   let _layerState = { zones: false, aqi: false, crowd: false };
   let _previousScores = {};
 
@@ -51,6 +49,7 @@
       zoom: 10.2,
       attributionControl: false,
     });
+    _map.repaint = true;
 
     _map.addControl(new maplibregl.NavigationControl(), 'top-left');
 
@@ -66,21 +65,20 @@
 
   // ─── Load Beaches ───────────────────────────────────────────────
   async function loadBeaches() {
+    let data;
     try {
       const res = await fetch('/api/beaches');
-      const data = await res.json();
+      data = await res.json();
       _beaches = data.beaches || data;
 
       // ── Real-time Danger Alerts tracking ──
       _beaches.forEach(b => {
         const prev = _previousScores[b.id];
-        // If score drops from safe/moderate into danger zone, trigger alert
         if (prev !== undefined && prev >= 50 && b.current_score < 50) {
           sendDangerAlert(b.name, b.current_score);
         }
         _previousScores[b.id] = b.current_score;
       });
-
     } catch (err) {
       console.error('[map] Failed to load beaches:', err);
       return;
@@ -93,8 +91,41 @@
     document.getElementById('avg-score').textContent = avg;
     document.getElementById('last-updated').textContent = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
+    // Update reports stat card
+    const totalReports = data.total_reports ?? null;
+    const reportsStatEl = document.getElementById('report-count');
+    if (reportsStatEl) {
+      reportsStatEl.textContent = totalReports !== null ? totalReports : '—';
+    }
+
     renderBeachList(_beaches);
     updateMarkers();
+
+    // If a beach detail panel is open, refresh its reports
+    if (_selectedBeach) {
+      fetch(`/api/beaches/${_selectedBeach}`)
+        .then(r => r.json())
+        .then(detail => {
+          if (detail && detail.reports !== undefined) {
+            renderReports(detail.reports);
+          }
+        })
+        .catch(() => {});
+    }
+  }
+
+  // ─── Danger Alert ───────────────────────────────────────────────
+  function sendDangerAlert(name, score) {
+    const toast = document.createElement('div');
+    toast.className = 'fixed bottom-4 right-4 bg-red-500 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 z-50';
+    toast.style.animation = 'slideIn 0.3s ease-out';
+    toast.innerHTML = `<span style="font-size:1.25rem">🚨</span><div><p style="font-weight:700;font-size:0.875rem;margin:0">Danger: ${name}</p><p style="font-size:0.75rem;margin:0;opacity:0.9">Score dropped to ${score}.</p></div>`;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.style.transition = 'opacity 0.3s';
+      toast.style.opacity = '0';
+      setTimeout(() => toast.remove(), 300);
+    }, 5000);
   }
 
   // ─── Render Beach List ──────────────────────────────────────────
@@ -116,49 +147,130 @@
 
   // ─── Map Markers ────────────────────────────────────────────────
   function updateMarkers() {
-    // Clear old
-    Object.values(_markers).forEach(m => m.remove());
-    _markers = {};
+    const geojsonData = {
+      type: 'FeatureCollection',
+      features: _beaches.map(b => ({
+        type: 'Feature',
+        id: b.id,
+        geometry: { type: 'Point', coordinates: [b.longitude, b.latitude] },
+        properties: { id: b.id, name: b.name, status: statusClass(b.current_score), score: b.current_score }
+      }))
+    };
 
-    _beaches.forEach(b => {
-      const el = document.createElement('div');
-      el.className = 'beach-marker';
-      const c = scoreColor(b.current_score);
-      Object.assign(el.style, {
-        width: '18px', height: '18px', borderRadius: '50%',
-        background: c, border: '2.5px solid white',
-        boxShadow: `0 0 12px ${c}90, 0 2px 6px rgba(0,0,0,0.5)`,
-        cursor: 'pointer',
-        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+    if (!_map.getSource('beaches')) {
+      _map.addSource('beaches', {
+        type: 'geojson',
+        data: geojsonData,
+        cluster: false
       });
-      el.addEventListener('mouseenter', () => { el.style.transform = 'scale(1.4)'; });
-      el.addEventListener('mouseleave', () => { el.style.transform = 'scale(1)'; });
 
-      const marker = new maplibregl.Marker({ element: el })
-        .setLngLat([b.longitude, b.latitude])
-        .addTo(_map);
+      // Glow layer — only visible when hover or active (opacity 0 at rest)
+      _map.addLayer({
+        id: 'beach-points-glow',
+        type: 'circle',
+        source: 'beaches',
+        paint: {
+          'circle-radius': [
+            'interpolate', ['linear'], ['zoom'],
+            5,  ['case', ['boolean', ['feature-state', 'active'], false], 10, ['boolean', ['feature-state', 'hover'], false], 8, 0],
+            10, ['case', ['boolean', ['feature-state', 'active'], false], 16, ['boolean', ['feature-state', 'hover'], false], 12, 0],
+            15, ['case', ['boolean', ['feature-state', 'active'], false], 22, ['boolean', ['feature-state', 'hover'], false], 18, 0]
+          ],
+          'circle-color': [
+            'case',
+            ['boolean', ['feature-state', 'aqi'], false], '#a855f7',
+            ['==', ['get', 'status'], 'safe'], '#22c55e',
+            ['==', ['get', 'status'], 'caution'], '#f59e0b',
+            ['==', ['get', 'status'], 'danger'], '#ef4444',
+            '#64748b'
+          ],
+          'circle-blur': 0.7,
+          'circle-opacity': 0.6
+        }
+      });
 
-      el.addEventListener('click', () => selectBeach(b.id));
-      _markers[b.id] = marker;
-    });
+      // Main point layer — always visible, scales with zoom
+      _map.addLayer({
+        id: 'beach-points',
+        type: 'circle',
+        source: 'beaches',
+        paint: {
+          'circle-radius': [
+            'interpolate', ['linear'], ['zoom'],
+            5,  ['case', ['boolean', ['feature-state', 'active'], false], 7,  ['boolean', ['feature-state', 'hover'], false], 6,  4],
+            10, ['case', ['boolean', ['feature-state', 'active'], false], 10, ['boolean', ['feature-state', 'hover'], false], 9,  6],
+            15, ['case', ['boolean', ['feature-state', 'active'], false], 14, ['boolean', ['feature-state', 'hover'], false], 12, 8]
+          ],
+          'circle-color': [
+            'case',
+            ['==', ['get', 'status'], 'safe'], '#22c55e',
+            ['==', ['get', 'status'], 'caution'], '#f59e0b',
+            ['==', ['get', 'status'], 'danger'], '#ef4444',
+            '#3b82f6'
+          ],
+          'circle-stroke-color': [
+            'case',
+            ['boolean', ['feature-state', 'aqi'], false], '#a855f7',
+            '#ffffff'
+          ],
+          'circle-stroke-width': 1.5,
+          'circle-opacity': 0.95,
+          'circle-blur': 0.1
+        }
+      });
+
+      _map.on('click', 'beach-points', (e) => {
+        const feature = e.features[0];
+        selectBeach(feature.properties.id);
+      });
+
+      _map.on('mouseenter', 'beach-points', (e) => {
+        _map.getCanvas().style.cursor = 'pointer';
+        if (e.features.length > 0) {
+          _map.setFeatureState({ source: 'beaches', id: e.features[0].id }, { hover: true });
+        }
+      });
+
+      _map.on('mouseleave', 'beach-points', (e) => {
+        _map.getCanvas().style.cursor = '';
+        if (e.features.length > 0) {
+          _map.setFeatureState({ source: 'beaches', id: e.features[0].id }, { hover: false });
+        }
+      });
+    } else {
+      _map.getSource('beaches').setData(geojsonData);
+    }
   }
 
   // ─── Select Beach (Detail View) ─────────────────────────────────
   window.selectBeach = async function (beachId) {
+    if (_selectedBeach && _map.getSource('beaches')) {
+      _map.setFeatureState({ source: 'beaches', id: _selectedBeach }, { active: false });
+    }
     _selectedBeach = beachId;
+    if (_map.getSource('beaches')) {
+      _map.setFeatureState({ source: 'beaches', id: beachId }, { active: true });
+    }
     const beach = _beaches.find(b => b.id === beachId);
     if (!beach) return;
 
     // Show detail panel
-    document.getElementById('beach-list-panel').classList.add('hidden');
-    document.getElementById('beach-detail-panel').classList.remove('hidden');
+    const listPanel = document.getElementById('beach-list-panel');
+    const detailPanel = document.getElementById('beach-detail-panel');
+    if (listPanel) listPanel.classList.add('hidden');
+    if (detailPanel) detailPanel.classList.remove('hidden');
+
+    const safeSet = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    const safeStyle = (id, prop, val) => { const el = document.getElementById(id); if (el) el.style[prop] = val; };
 
     // Set basic info
-    document.getElementById('detail-name').textContent = beach.name;
-    document.getElementById('detail-score').textContent = beach.current_score;
-    document.getElementById('detail-score').style.color = scoreColor(beach.current_score);
-    document.getElementById('detail-status-badge').textContent = statusLabel(beach.current_score);
-    document.getElementById('detail-status-badge').className = `status-badge ${statusClass(beach.current_score)}`;
+    safeSet('detail-name', beach.name);
+    safeSet('detail-score', beach.current_score);
+    safeStyle('detail-score', 'color', scoreColor(beach.current_score));
+    
+    safeSet('detail-status-badge', statusLabel(beach.current_score));
+    const badge = document.getElementById('detail-status-badge');
+    if (badge) badge.className = `status-badge ${statusClass(beach.current_score)}`;
 
     // Update report links
     const rl1 = document.getElementById('report-link-detail');
@@ -168,16 +280,20 @@
 
     // Score ring animation
     const arc = document.getElementById('score-arc');
-    const pct = beach.current_score / 100;
-    const circumference = 2 * Math.PI * 66;
-    arc.style.stroke = scoreColor(beach.current_score);
-    setTimeout(() => { arc.setAttribute('stroke-dashoffset', circumference * (1 - pct)); }, 50);
+    if (arc) {
+      const pct = beach.current_score / 100;
+      const circumference = 2 * Math.PI * 66;
+      arc.style.stroke = scoreColor(beach.current_score);
+      setTimeout(() => { arc.setAttribute('stroke-dashoffset', circumference * (1 - pct)); }, 50);
+    }
 
     // Grade indicator
-    document.getElementById('grade-indicator').style.left = `${beach.current_score}%`;
+    safeStyle('grade-indicator', 'left', `${beach.current_score}%`);
 
     // Fly to
-    _map.flyTo({ center: [beach.longitude, beach.latitude], zoom: 13.5, duration: 1200 });
+    if (_map && _map.flyTo) {
+      _map.flyTo({ center: [beach.longitude, beach.latitude], zoom: 13.5, duration: 1200 });
+    }
 
     // Fetch full detail
     try {
@@ -198,89 +314,100 @@
     const zones = detail.safety_zones || {};
     const reports = detail.reports || [];
 
-    // ── Satellite data ──
-    document.getElementById('detail-sst').textContent = sat.sst ? `${sat.sst}°C` : '—';
-    document.getElementById('detail-wind').textContent = sat.wind_speed ? `${sat.wind_speed} km/h` : '—';
-    document.getElementById('detail-chlor').textContent = sat.chlorophyll ? `${sat.chlorophyll} mg/m³` : '—';
-    document.getElementById('detail-turb').textContent = sat.turbidity ? `${sat.turbidity} NTU` : '—';
+    const safeSet = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    const safeStyle = (id, prop, val) => { const el = document.getElementById(id); if (el) el.style[prop] = val; };
+
+    // ── Metrics Grid ──
+    safeSet('detail-temp', sat.sst ? `${sat.sst}°C` : '—');
+    safeSet('detail-wind', sat.wind_speed ? `${sat.wind_speed} km/h` : '—');
+    safeSet('detail-chlor', sat.chlorophyll ? `${sat.chlorophyll} mg/m³` : '—');
+    safeSet('detail-turb', sat.turbidity ? `${sat.turbidity} NTU` : '—');
 
     // ── Weather alert ──
     const alertEl = document.getElementById('weather-alert');
-    const weather = sat.weather_condition || '';
-    if (weather.includes('Thunderstorm') || weather.includes('Rain') || weather.includes('Heavy')) {
-      alertEl.classList.add('active');
-      document.getElementById('weather-alert-text').textContent = `⚠ ${weather} — Exercise extreme caution`;
-    } else {
-      alertEl.classList.remove('active');
+    if (alertEl) {
+      const weather = sat.weather_condition || '';
+      if (weather.includes('Thunderstorm') || weather.includes('Rain') || weather.includes('Heavy')) {
+        alertEl.classList.add('active');
+        safeSet('weather-alert-text', `⚠ ${weather} — Exercise extreme caution`);
+      } else {
+        alertEl.classList.remove('active');
+      }
     }
 
     // ── Beach grade ──
-    const gradeEl = document.getElementById('detail-grade');
-    // We'll get grade from AI score call
     triggerAIScore(detail);
 
     // ── Marine / Tide ──
     const mc = marine.current || {};
-    document.getElementById('detail-wave-ht').textContent = mc.wave_height != null ? `${mc.wave_height}m` : '—';
-    document.getElementById('detail-swell').textContent = mc.swell_wave_height != null ? `${mc.swell_wave_height}m` : '—';
-    document.getElementById('detail-current-vel').textContent = mc.ocean_current_velocity != null ? `${mc.ocean_current_velocity}km/h` : '—';
+    safeSet('detail-wave', mc.wave_height != null ? `${mc.wave_height}m` : '—');
+    safeSet('detail-wave-ht', mc.wave_height != null ? `${mc.wave_height}m` : '—');
+    safeSet('detail-swell', mc.swell_wave_height != null ? `${mc.swell_wave_height}m` : '—');
+    safeSet('detail-current-vel', mc.ocean_current_velocity != null ? `${mc.ocean_current_velocity}km/h` : '—');
 
     // Current direction arrow
     if (mc.ocean_current_direction != null) {
-      document.getElementById('detail-current-dir').style.transform = `rotate(${mc.ocean_current_direction}deg)`;
+      safeStyle('detail-current-dir', 'transform', `rotate(${mc.ocean_current_direction}deg)`);
     }
 
     // Tide windows
     const tw = document.getElementById('tide-windows');
-    if (marine.tides && marine.tides.length > 0) {
-      tw.innerHTML = marine.tides.map(t => {
-        const time = new Date(t.time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-        return `<span class="tide-badge ${t.type}">${t.type === 'high' ? '▲' : '▼'} ${t.type.toUpperCase()} ${time}</span>`;
-      }).join('');
-    } else {
-      tw.innerHTML = '<span style="color:#475569;font-size:11px">No tide data</span>';
+    if (tw) {
+      if (marine.tides && marine.tides.length > 0) {
+        tw.innerHTML = marine.tides.map(t => {
+          const time = new Date(t.time).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+          return `<span class="tide-badge ${t.type}">${t.type === 'high' ? '▲' : '▼'} ${t.type.toUpperCase()} ${time}</span>`;
+        }).join('');
+      } else {
+        tw.innerHTML = '<span style="color:#475569;font-size:11px">No tide data</span>';
+      }
     }
 
     // Tide chart
     renderTideChart(marine.hourly || []);
-    document.getElementById('tide-source').textContent = marine.source || 'Marine API';
+    safeSet('tide-source', marine.source || 'Marine API');
 
     // ── Air Quality / UV ──
     const eqiVal = aqi.eqi ?? 80;
-    document.getElementById('eqi-value').textContent = eqiVal;
-    const eqiCirc = 2 * Math.PI * 19;
-    const eqiOffset = eqiCirc * (1 - eqiVal / 100);
+    safeSet('eqi-value', eqiVal);
+    
     const eqiArc = document.getElementById('eqi-arc');
-    eqiArc.setAttribute('stroke-dashoffset', eqiOffset);
-    eqiArc.setAttribute('stroke', eqiVal >= 70 ? '#4ade80' : eqiVal >= 40 ? '#facc15' : '#f87171');
+    if (eqiArc) {
+      const eqiCirc = 2 * Math.PI * 19;
+      const eqiOffset = eqiCirc * (1 - eqiVal / 100);
+      eqiArc.setAttribute('stroke-dashoffset', eqiOffset);
+      eqiArc.setAttribute('stroke', eqiVal >= 70 ? '#4ade80' : eqiVal >= 40 ? '#facc15' : '#f87171');
+    }
 
     const eqiGrade = eqiVal >= 90 ? 'A+' : eqiVal >= 80 ? 'A' : eqiVal >= 70 ? 'B' : eqiVal >= 50 ? 'C' : 'D';
-    document.getElementById('eqi-grade').textContent = eqiGrade;
-    document.getElementById('eqi-grade').style.color = eqiVal >= 70 ? '#4ade80' : eqiVal >= 40 ? '#facc15' : '#f87171';
+    safeSet('eqi-grade', eqiGrade);
+    safeStyle('eqi-grade', 'color', eqiVal >= 70 ? '#4ade80' : eqiVal >= 40 ? '#facc15' : '#f87171');
 
-    document.getElementById('detail-pm25').textContent = aqi.pm2_5 != null ? `${aqi.pm2_5} µg/m³` : '—';
-    document.getElementById('detail-aqi').textContent = aqi.european_aqi != null ? `EU ${aqi.european_aqi}` : '—';
+    safeSet('detail-pm25', aqi.pm2_5 != null ? `${aqi.pm2_5} µg/m³` : '—');
+    safeSet('detail-aqi', aqi.european_aqi != null ? `EU ${aqi.european_aqi}` : '—');
 
     // UV
     const uv = aqi.uv_index ?? 0;
     const uvCat = aqi.uv_category || {};
-    document.getElementById('uv-value').textContent = uv;
-    document.getElementById('uv-value').style.color = uvCat.color || '#facc15';
-    document.getElementById('uv-level').textContent = uvCat.level || 'N/A';
-    document.getElementById('uv-level').style.color = uvCat.color || '#facc15';
-    document.getElementById('uv-indicator').style.left = `${Math.min(100, (uv / 11) * 100)}%`;
-    document.getElementById('uv-advice').textContent = uvCat.advice || '';
+    safeSet('detail-uv', uv);
+    safeSet('uv-value', uv);
+    safeStyle('uv-value', 'color', uvCat.color || '#facc15');
+    safeSet('uv-level', uvCat.level || 'N/A');
+    safeStyle('uv-level', 'color', uvCat.color || '#facc15');
+    safeStyle('uv-indicator', 'left', `${Math.min(100, (uv / 11) * 100)}%`);
+    safeSet('uv-advice', uvCat.advice || '');
 
     // ── Crowd ──
-    document.getElementById('crowd-emoji').textContent = crowd.level_emoji || '👥';
-    document.getElementById('crowd-level').textContent = crowd.level || 'Unknown';
-    document.getElementById('crowd-index').textContent = `${crowd.crowd_index ?? 0}/100`;
-    document.getElementById('crowd-bar-fill').style.width = `${crowd.crowd_index ?? 0}%`;
+    safeSet('detail-crowd', crowd.level_emoji ? `${crowd.level_emoji} ${crowd.level || ''}` : '—');
+    safeSet('crowd-emoji', crowd.level_emoji || '👥');
+    safeSet('crowd-level', crowd.level || 'Unknown');
+    safeSet('crowd-index', `${crowd.crowd_index ?? 0}/100`);
+    safeStyle('crowd-bar-fill', 'width', `${crowd.crowd_index ?? 0}%`);
     const ci = crowd.crowd_index ?? 0;
-    document.getElementById('crowd-bar-fill').style.background =
+    safeStyle('crowd-bar-fill', 'background',
       ci <= 30 ? '#4ade80' : ci <= 50 ? 'linear-gradient(90deg,#4ade80,#facc15)' :
-      ci <= 70 ? 'linear-gradient(90deg,#facc15,#fb923c)' : '#f87171';
-    document.getElementById('crowd-advice').textContent = crowd.best_time || '';
+      ci <= 70 ? 'linear-gradient(90deg,#facc15,#fb923c)' : '#f87171');
+    safeSet('crowd-advice', crowd.best_time || '');
 
     // ── Safety Zones on map ──
     clearZoneLayers();
@@ -297,6 +424,9 @@
   // ─── AI Score for Grade + Risk Factors ──────────────────────────
   async function triggerAIScore(detail) {
     const beach = detail.beach;
+    const safeSet = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+    const safeStyle = (id, prop, val) => { const el = document.getElementById(id); if (el) el.style[prop] = val; };
+
     try {
       const res = await fetch('/api/ai/score', {
         method: 'POST',
@@ -306,48 +436,58 @@
       const result = await res.json();
 
       // Attribution
-      document.getElementById('detail-attribution').textContent = result.attribution || 'Analysis complete.';
+      safeSet('detail-attribution', result.attribution || 'Analysis complete.');
 
       // Grade
+      safeSet('detail-grade', result.beach_grade || 'N/A');
       const gradeEl = document.getElementById('detail-grade');
-      gradeEl.textContent = result.beach_grade || 'N/A';
-      gradeEl.className = `grade-badge ${gradeClass(result.beach_grade)}`;
+      if (gradeEl) gradeEl.className = `grade-badge ${gradeClass(result.beach_grade)}`;
 
       // Risk factors
       const rfSection = document.getElementById('risk-factors-section');
       const rfList = document.getElementById('risk-factors-list');
-      if (result.risk_factors && result.risk_factors.length > 0) {
-        rfSection.classList.remove('hidden');
-        rfList.innerHTML = result.risk_factors.map(f => `<li>${f}</li>`).join('');
-      } else {
-        rfSection.classList.add('hidden');
+      if (rfSection && rfList) {
+        if (result.risk_factors && result.risk_factors.length > 0) {
+          rfSection.classList.remove('hidden');
+          rfList.innerHTML = result.risk_factors.map(f => `<li>${f}</li>`).join('');
+        } else {
+          rfSection.classList.add('hidden');
+        }
       }
 
       // Recommendations
       const recSection = document.getElementById('recommendations-section');
       const recList = document.getElementById('recommendations-list');
-      if (result.recommendations && result.recommendations.length > 0) {
-        recSection.classList.remove('hidden');
-        recList.innerHTML = result.recommendations.map(r => `<li>${r}</li>`).join('');
-      } else {
-        recSection.classList.add('hidden');
+      if (recSection && recList) {
+        if (result.recommendations && result.recommendations.length > 0) {
+          recSection.classList.remove('hidden');
+          recList.innerHTML = result.recommendations.map(r => `<li>${r}</li>`).join('');
+        } else {
+          recSection.classList.add('hidden');
+        }
       }
 
       // Update score if different
       if (result.score) {
-        document.getElementById('detail-score').textContent = result.score;
-        document.getElementById('detail-score').style.color = scoreColor(result.score);
+        safeSet('detail-score', result.score);
+        safeStyle('detail-score', 'color', scoreColor(result.score));
+        
         const arc = document.getElementById('score-arc');
-        arc.style.stroke = scoreColor(result.score);
-        const circumference = 2 * Math.PI * 66;
-        arc.setAttribute('stroke-dashoffset', circumference * (1 - result.score / 100));
-        document.getElementById('grade-indicator').style.left = `${result.score}%`;
-        document.getElementById('detail-status-badge').textContent = statusLabel(result.score);
-        document.getElementById('detail-status-badge').className = `status-badge ${statusClass(result.score)}`;
+        if (arc) {
+          arc.style.stroke = scoreColor(result.score);
+          const circumference = 2 * Math.PI * 66;
+          arc.setAttribute('stroke-dashoffset', circumference * (1 - result.score / 100));
+        }
+        
+        safeStyle('grade-indicator', 'left', `${result.score}%`);
+        safeSet('detail-status-badge', statusLabel(result.score));
+        
+        const badge = document.getElementById('detail-status-badge');
+        if (badge) badge.className = `status-badge ${statusClass(result.score)}`;
       }
     } catch (err) {
       console.error('[map] AI score fetch failed:', err);
-      document.getElementById('detail-attribution').textContent = 'AI analysis temporarily unavailable.';
+      safeSet('detail-attribution', 'AI analysis temporarily unavailable.');
     }
   }
 
@@ -456,80 +596,99 @@
   // ─── Reports ────────────────────────────────────────────────────
   function renderReports(reports) {
     const container = document.getElementById('detail-reports');
-    if (!reports.length) {
-      container.innerHTML = '<p style="color:#475569;font-size:12px">No community reports yet</p>';
+    const countEl = document.getElementById('report-count');
+    const list = Array.isArray(reports) ? reports : [];
+
+    if (countEl) countEl.textContent = list.length;
+
+    if (!list.length) {
+      container.innerHTML = '<p style="color:#475569;font-size:12px;padding:8px 0">No community reports yet. Be the first to report!</p>';
       return;
     }
-    document.getElementById('report-count').textContent = reports.length;
-    container.innerHTML = reports.slice(0, 5).map(r => {
+
+    container.innerHTML = list.slice(0, 5).map(r => {
       const tags = (r.ai_tags || []).map(t => `<span class="tag">${t}</span>`).join('');
-      const time = new Date(r.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+      const time = r.created_at
+        ? new Date(r.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+        : 'Recent';
       const sevColor = r.ai_severity === 'high' ? '#f87171' : r.ai_severity === 'medium' ? '#fb923c' : '#4ade80';
       return `
         <div class="report-card">
           <div class="flex items-center justify-between mb-1">
-            <div class="flex gap-1 flex-wrap">${tags || '<span class="tag">Report</span>'}</div>
+            <div class="flex gap-1 flex-wrap">${tags || '<span class="tag">Community Report</span>'}</div>
             <span style="color:${sevColor};font-size:10px;font-weight:700;text-transform:uppercase">${r.ai_severity || 'info'}</span>
           </div>
-          <p style="color:#94a3b8;font-size:12px;line-height:1.4" class="line-clamp-2">${r.description || 'No details provided'}</p>
+          <p style="color:#94a3b8;font-size:12px;line-height:1.4">${r.description || 'No details provided'}</p>
           <p style="color:#334155;font-size:10px;margin-top:4px">${time}</p>
         </div>`;
     }).join('');
   }
 
   // ─── Safety Zone Layers ─────────────────────────────────────────
+  function initZoneLayers() {
+    if (!_map.getSource('zones')) {
+      _map.addSource('zones', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+      
+      _map.addLayer({
+        id: 'zone-danger-radius',
+        type: 'circle',
+        source: 'zones',
+        filter: ['==', ['get', 'type'], 'danger'],
+        paint: {
+          'circle-radius': ['/', ['get', 'radius'], 3],
+          'circle-color': 'rgba(248,113,113,0.15)',
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#f87171'
+        }
+      });
+      
+      _map.addLayer({
+        id: 'zone-symbols',
+        type: 'symbol',
+        source: 'zones',
+        layout: {
+          'text-field': [
+            'match', ['get', 'type'],
+            'lifeguard', '🏊',
+            'danger', '⚠',
+            'entry', '🔷',
+            ''
+          ],
+          'text-size': [
+            'match', ['get', 'type'],
+            'lifeguard', 16,
+            'danger', 14,
+            'entry', 14,
+            12
+          ]
+        },
+        paint: {
+          'text-halo-color': '#ffffff',
+          'text-halo-width': 1
+        }
+      });
+    }
+  }
+
   function renderZoneLayers(zones) {
-    // Lifeguard markers (green)
+    initZoneLayers();
+    const features = [];
     (zones.lifeguard || []).forEach(z => {
-      const el = document.createElement('div');
-      Object.assign(el.style, {
-        width: '28px', height: '28px', borderRadius: '50%',
-        background: 'rgba(74,222,128,0.2)', border: '2px solid #4ade80',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: '14px', cursor: 'pointer',
-      });
-      el.textContent = '🏊';
-      el.title = z.label;
-      const m = new maplibregl.Marker({ element: el }).setLngLat([z.lng, z.lat]).addTo(_map);
-      _zoneLayers.lifeguard.push(m);
+      features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [z.lng, z.lat] }, properties: { type: 'lifeguard', label: z.label }});
     });
-
-    // Danger markers (red circles)
     (zones.danger || []).forEach(z => {
-      const el = document.createElement('div');
-      const size = (z.radius || 80) / 3;
-      Object.assign(el.style, {
-        width: `${size}px`, height: `${size}px`, borderRadius: '50%',
-        background: 'rgba(248,113,113,0.15)', border: '2px dashed #f87171',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: '12px', cursor: 'pointer',
-      });
-      el.textContent = '⚠';
-      el.title = z.label;
-      const m = new maplibregl.Marker({ element: el }).setLngLat([z.lng, z.lat]).addTo(_map);
-      _zoneLayers.danger.push(m);
+      features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [z.lng, z.lat] }, properties: { type: 'danger', label: z.label, radius: z.radius || 80 }});
     });
-
-    // Safe entry markers (blue diamonds)
     (zones.entry || []).forEach(z => {
-      const el = document.createElement('div');
-      Object.assign(el.style, {
-        width: '22px', height: '22px',
-        background: '#38bdf8', transform: 'rotate(45deg)',
-        border: '2px solid white', cursor: 'pointer',
-        boxShadow: '0 2px 8px rgba(56,189,248,0.5)',
-      });
-      el.title = z.label;
-      const m = new maplibregl.Marker({ element: el }).setLngLat([z.lng, z.lat]).addTo(_map);
-      _zoneLayers.entry.push(m);
+      features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [z.lng, z.lat] }, properties: { type: 'entry', label: z.label }});
     });
+    _map.getSource('zones').setData({ type: 'FeatureCollection', features });
   }
 
   function clearZoneLayers() {
-    Object.values(_zoneLayers).forEach(arr => {
-      arr.forEach(m => m.remove());
-      arr.length = 0;
-    });
+    if (_map.getSource('zones')) {
+      _map.getSource('zones').setData({ type: 'FeatureCollection', features: [] });
+    }
   }
 
   // ─── Search ─────────────────────────────────────────────────────
@@ -544,6 +703,9 @@
 
   // ─── Back Button ────────────────────────────────────────────────
   document.getElementById('back-btn').addEventListener('click', () => {
+    if (_selectedBeach && _map.getSource('beaches')) {
+      _map.setFeatureState({ source: 'beaches', id: _selectedBeach }, { active: false });
+    }
     _selectedBeach = null;
     document.getElementById('beach-detail-panel').classList.add('hidden');
     document.getElementById('beach-list-panel').classList.remove('hidden');
@@ -600,17 +762,8 @@
       this.classList.toggle('active', _layerState.aqi);
       // Toggle AQI visual on markers
       _beaches.forEach(b => {
-        const marker = _markers[b.id];
-        if (marker) {
-          const el = marker.getElement();
-          if (_layerState.aqi) {
-            el.style.boxShadow = `0 0 18px rgba(168,85,247,0.7), 0 2px 6px rgba(0,0,0,0.5)`;
-            el.style.borderColor = '#a855f7';
-          } else {
-            const c = scoreColor(b.current_score);
-            el.style.boxShadow = `0 0 12px ${c}90, 0 2px 6px rgba(0,0,0,0.5)`;
-            el.style.borderColor = 'white';
-          }
+        if (_map.getSource('beaches')) {
+          _map.setFeatureState({ source: 'beaches', id: b.id }, { aqi: _layerState.aqi });
         }
       });
     });
@@ -620,14 +773,8 @@
       this.classList.toggle('active', _layerState.crowd);
       // Toggle crowd visual — pulse effect on high-crowd markers
       _beaches.forEach(b => {
-        const marker = _markers[b.id];
-        if (marker) {
-          const el = marker.getElement();
-          if (_layerState.crowd) {
-            el.style.animation = 'live-blink 2s ease-in-out infinite';
-          } else {
-            el.style.animation = 'none';
-          }
+        if (_map.getSource('beaches')) {
+          _map.setFeatureState({ source: 'beaches', id: b.id }, { crowd: _layerState.crowd });
         }
       });
     });

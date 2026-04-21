@@ -56,7 +56,27 @@ const SCORE_HISTORY_MOCK = {
   vagator:   [70, 67, 63, 60, 59, 58, 58],
 };
 
-const REPORTS_MOCK = [];
+// Use a global singleton for mock reports so they persist across API calls
+// in the same process (avoids data loss on Next.js module re-use)
+if (!global.__TIDELQ_REPORTS__) global.__TIDELQ_REPORTS__ = [];
+const REPORTS_MOCK = global.__TIDELQ_REPORTS__;
+
+if (!global.__TIDELQ_ISSUES__) {
+  global.__TIDELQ_ISSUES__ = [
+    { id: '11111111-1111-1111-1111-111111111111', title: 'Severe plastic pollution after tide', description: 'Massive amounts of plastic waste washed onto the shore near the northern rocks.', beach_id: 'anjuna', category: 'Pollution', created_by: 'anon', created_at: new Date(Date.now() - 3600000).toISOString(), status: 'Open' },
+    { id: '22222222-2222-2222-2222-222222222222', title: 'Broken lifeguard chair', description: 'The main wooden chair is unstable and dangerous.', beach_id: 'baga', category: 'Infrastructure', created_by: 'anon', created_at: new Date(Date.now() - 86400000).toISOString(), status: 'In Progress' }
+  ];
+}
+const ISSUES_MOCK = global.__TIDELQ_ISSUES__;
+
+if (!global.__TIDELQ_VOTES__) {
+  global.__TIDELQ_VOTES__ = [
+    { id: 'v1', user_id: 'user1', issue_id: '11111111-1111-1111-1111-111111111111', vote_type: 1 },
+    { id: 'v2', user_id: 'user2', issue_id: '11111111-1111-1111-1111-111111111111', vote_type: 1 },
+    { id: 'v3', user_id: 'user3', issue_id: '22222222-2222-2222-2222-222222222222', vote_type: 1 }
+  ];
+}
+const VOTES_MOCK = global.__TIDELQ_VOTES__;
 
 // ─── Supabase Singleton ───────────────────────────────────────────────────────
 let _sb = null;
@@ -257,9 +277,22 @@ export function getBeachZones(beachId, beach) {
   return SAFETY_ZONES[beachId] || (beach ? getDefaultZones(beach) : null);
 }
 
+export async function getTotalReportCount() {
+  const client = sb();
+  if (!client) return REPORTS_MOCK.length;
+  const { count, error } = await client
+    .from('reports')
+    .select('*', { count: 'exact', head: true });
+  if (error) { console.error('[db] getTotalReportCount:', error.message); return 0; }
+  return count || 0;
+}
+
 export async function getReportsLast24h(beachId) {
   const client = sb();
-  if (!client) return REPORTS_MOCK.filter(r => r.beach_id === beachId).length;
+  if (!client) {
+    const since = Date.now() - 24 * 60 * 60 * 1000;
+    return REPORTS_MOCK.filter(r => r.beach_id === beachId && new Date(r.created_at).getTime() > since).length;
+  }
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const { count, error } = await client
     .from('reports')
@@ -287,3 +320,125 @@ export async function updateBeachScore(beachId, score, attribution) {
   await client.from('beaches').update({ current_score: score, ai_attribution: attribution, last_updated: now }).eq('id', beachId);
   await client.from('beach_scores').insert([{ beach_id: beachId, score, recorded_at: now }]);
 }
+
+// ─── Public Voting System for Issues ──────────────────────────────────────────
+
+export async function getIssues() {
+  const client = sb();
+
+  const mockFallback = () => {
+    return ISSUES_MOCK.map(issue => {
+      const upvotes = VOTES_MOCK.filter(v => v.issue_id === issue.id && v.vote_type === 1).length;
+      const downvotes = VOTES_MOCK.filter(v => v.issue_id === issue.id && v.vote_type === -1).length;
+      return { ...issue, vote_count: upvotes - downvotes };
+    }).sort((a, b) => b.vote_count - a.vote_count);
+  };
+
+  if (!client) {
+    return mockFallback();
+  }
+
+  const { data, error } = await client
+    .from('issues')
+    .select(`
+      *,
+      votes (vote_type)
+    `)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.warn('[db] Supabase getIssues failed (missing table?):', error.message);
+    return mockFallback(); // Fallback to memory
+  }
+
+  return data.map(issue => {
+    let vote_count = 0;
+    if (issue.votes && Array.isArray(issue.votes)) {
+      vote_count = issue.votes.reduce((acc, v) => acc + (v.vote_type || 0), 0);
+    }
+    return { ...issue, vote_count };
+  }).sort((a, b) => b.vote_count - a.vote_count);
+}
+
+export async function createIssue(data) {
+  const client = sb();
+
+  const mockFallback = () => {
+    const newIssue = {
+      id: 'issue_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      ...data,
+      created_at: new Date().toISOString(),
+      status: 'Open'
+    };
+    ISSUES_MOCK.push(newIssue);
+    return newIssue;
+  };
+
+  if (!client) {
+    return mockFallback();
+  }
+
+  const { data: result, error } = await client.from('issues').insert([data]).select().single();
+  if (error) {
+    console.warn('[db] Supabase createIssue failed (missing table?):', error.message);
+    return mockFallback(); // Fallback to memory
+  }
+  return result;
+}
+
+export async function voteIssue(user_id, issue_id, vote_type) {
+  const client = sb();
+
+  const mockFallback = () => {
+    const existingIndex = VOTES_MOCK.findIndex(v => v.user_id === user_id && v.issue_id === issue_id);
+    if (existingIndex >= 0) {
+      if (VOTES_MOCK[existingIndex].vote_type === vote_type) {
+        // Toggle off if same vote
+        VOTES_MOCK.splice(existingIndex, 1);
+        return { message: 'Vote removed' };
+      } else {
+        VOTES_MOCK[existingIndex].vote_type = vote_type;
+      }
+    } else {
+      VOTES_MOCK.push({ id: 'vote_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9), user_id, issue_id, vote_type });
+    }
+    return { message: 'Vote cast' };
+  };
+
+  if (!client) {
+    return mockFallback();
+  }
+
+  // With Supabase, check if vote exists
+  const { data: existing, error: selectErr } = await client
+    .from('votes')
+    .select('*')
+    .eq('user_id', user_id)
+    .eq('issue_id', issue_id)
+    .single();
+
+  if (selectErr && selectErr.code !== 'PGRST116') {
+     // Not a "Rows not found" error, likely missing table
+     console.warn('[db] Supabase votes select failed:', selectErr.message);
+     return mockFallback();
+  }
+
+  if (existing) {
+    if (existing.vote_type === vote_type) {
+      // Toggle off
+      await client.from('votes').delete().eq('id', existing.id);
+      return { message: 'Vote removed' };
+    } else {
+      // Update
+      const { data, error } = await client.from('votes').update({ vote_type }).eq('id', existing.id).select();
+      if (error) return mockFallback();
+      return data;
+    }
+  } else {
+    // Insert
+    const { data, error } = await client.from('votes').insert([{ user_id, issue_id, vote_type }]).select();
+    if (error) return mockFallback();
+    return data;
+  }
+}
+

@@ -7,17 +7,16 @@
   <meta name="description" content="Goa coastline analytics: health index, beach rankings, environmental trends, and report heatmap." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Sora:wght@600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <link rel="stylesheet" href="/css/style.css" />
 </head>
 <body class="analytics-page">
 
-  <!-- Header -->
   <header class="analytics-header">
     <div class="flex items-center gap-4">
-      <a href="/" style="color:#38bdf8;font-size:13px;font-weight:600;text-decoration:none" class="flex items-center gap-1.5 transition-colors hover:opacity-80">
+      <a href="index.html" class="back-link flex items-center gap-1.5">
         <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
           <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
         </svg>
@@ -26,22 +25,21 @@
       <div style="width:1px;height:20px;background:var(--border)"></div>
       <div class="flex items-center gap-2.5">
         <span style="font-size:18px">📊</span>
-        <h1 class="font-display font-black text-xl" style="color:var(--text-1);letter-spacing:-0.02em">Coastline Analytics</h1>
+        <h1 class="font-display font-black text-xl" style="color:var(--text-1)">Coastline Analytics</h1>
       </div>
     </div>
-    <div class="flex items-center gap-2.5 px-3 py-1.5" style="background:rgba(52,211,153,0.10);border:1px solid rgba(52,211,153,0.25);border-radius:999px">
-      <div class="w-2 h-2 rounded-full live-pulse" style="background:#34d399;color:#34d399"></div>
-      <span style="color:#34d399;font-size:11px;font-weight:800;letter-spacing:0.1em">LIVE DATA</span>
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      <span>LIVE DATA</span>
     </div>
   </header>
 
-  <!-- Grid -->
   <div class="analytics-grid" id="analytics-grid">
 
     <!-- Coastline Health Index -->
     <div class="analytics-card">
       <div class="analytics-stat">
-        <p style="color:var(--text-2);font-size:10px;font-weight:800;letter-spacing:0.12em;margin-bottom:10px;text-transform:uppercase">Goa Coastline Health Index</p>
+        <p class="section-label mb-3">Goa Coastline Health Index</p>
         <div id="health-index" class="analytics-stat-value">—</div>
         <p style="color:var(--text-3);font-size:12px;margin-top:6px;font-weight:500">out of 100</p>
       </div>
@@ -49,18 +47,18 @@
 
     <!-- Score Distribution -->
     <div class="analytics-card">
-      <p style="color:var(--text-2);font-size:10px;font-weight:800;letter-spacing:0.12em;margin-bottom:14px;text-transform:uppercase">Score Distribution</p>
+      <p class="section-label mb-4">Score Distribution</p>
       <div class="flex items-end justify-center gap-8" style="height:110px">
         <div class="text-center">
-          <div id="dist-safe" class="text-3xl font-black font-display" style="color:#34d399;filter:drop-shadow(0 0 12px rgba(52,211,153,0.4))">—</div>
+          <div id="dist-safe" class="text-3xl font-black font-display" style="color:#4ECDC4;filter:drop-shadow(0 0 12px rgba(78,205,196,0.4))">—</div>
           <div style="color:var(--text-2);font-size:10px;font-weight:700;margin-top:6px;letter-spacing:0.08em">SAFE</div>
         </div>
         <div class="text-center">
-          <div id="dist-moderate" class="text-3xl font-black font-display" style="color:#fb923c;filter:drop-shadow(0 0 12px rgba(251,146,60,0.4))">—</div>
+          <div id="dist-moderate" class="text-3xl font-black font-display" style="color:#FFB347;filter:drop-shadow(0 0 12px rgba(255,179,71,0.4))">—</div>
           <div style="color:var(--text-2);font-size:10px;font-weight:700;margin-top:6px;letter-spacing:0.08em">MODERATE</div>
         </div>
         <div class="text-center">
-          <div id="dist-danger" class="text-3xl font-black font-display" style="color:#f87171;filter:drop-shadow(0 0 12px rgba(248,113,113,0.4))">—</div>
+          <div id="dist-danger" class="text-3xl font-black font-display" style="color:#FF6B6B;filter:drop-shadow(0 0 12px rgba(255,107,107,0.4))">—</div>
           <div style="color:var(--text-2);font-size:10px;font-weight:700;margin-top:6px;letter-spacing:0.08em">DANGER</div>
         </div>
       </div>
@@ -68,14 +66,14 @@
 
     <!-- Quick Stats -->
     <div class="analytics-card">
-      <p style="color:var(--text-2);font-size:10px;font-weight:800;letter-spacing:0.12em;margin-bottom:14px;text-transform:uppercase">Quick Stats</p>
+      <p class="section-label mb-4">Quick Stats</p>
       <div class="grid grid-cols-2 gap-3">
         <div class="stat-card" style="padding:14px">
-          <div style="color:#38bdf8;font-size:10px;font-weight:800;margin-bottom:4px;letter-spacing:0.08em">BEACHES</div>
+          <div style="color:var(--sun);font-size:10px;font-weight:800;margin-bottom:4px;letter-spacing:0.08em">BEACHES</div>
           <div id="stat-total" class="font-display font-black text-2xl" style="color:var(--text-1)">—</div>
         </div>
         <div class="stat-card" style="padding:14px">
-          <div style="color:#fb923c;font-size:10px;font-weight:800;margin-bottom:4px;letter-spacing:0.08em">REPORTS</div>
+          <div style="color:var(--coral);font-size:10px;font-weight:800;margin-bottom:4px;letter-spacing:0.08em">REPORTS</div>
           <div id="stat-reports" class="font-display font-black text-2xl" style="color:var(--text-1)">—</div>
         </div>
       </div>
@@ -83,7 +81,7 @@
 
     <!-- 7-Day Coastline Health Trend -->
     <div class="analytics-card wide">
-      <p style="color:var(--text-2);font-size:10px;font-weight:800;letter-spacing:0.12em;margin-bottom:14px;text-transform:uppercase">7-Day Coastline Health Trend</p>
+      <p class="section-label mb-4">7-Day Coastline Health Trend</p>
       <div style="height:200px">
         <canvas id="health-trend-chart"></canvas>
       </div>
@@ -91,19 +89,19 @@
 
     <!-- Best 5 Beaches -->
     <div class="analytics-card">
-      <p style="color:var(--text-2);font-size:10px;font-weight:800;letter-spacing:0.12em;margin-bottom:14px;text-transform:uppercase">🏆 Top 5 Safest Beaches</p>
+      <p class="section-label mb-4">🏆 Top 5 Safest Beaches</p>
       <div id="best-5"></div>
     </div>
 
     <!-- Worst 5 Beaches -->
     <div class="analytics-card">
-      <p style="color:var(--text-2);font-size:10px;font-weight:800;letter-spacing:0.12em;margin-bottom:14px;text-transform:uppercase">⚠️ Top 5 At-Risk Beaches</p>
+      <p class="section-label mb-4">⚠️ Top 5 At-Risk Beaches</p>
       <div id="worst-5"></div>
     </div>
 
     <!-- Most Reported Beaches -->
     <div class="analytics-card wide">
-      <p style="color:var(--text-2);font-size:10px;font-weight:800;letter-spacing:0.12em;margin-bottom:14px;text-transform:uppercase">📋 Most Reported Beaches</p>
+      <p class="section-label mb-4">📋 Most Reported Beaches</p>
       <div style="height:220px">
         <canvas id="reports-chart"></canvas>
       </div>
@@ -111,7 +109,7 @@
 
   </div>
 
-  <footer style="text-align:center;padding:28px 20px;color:var(--text-3);font-size:12px;font-weight:500">
+  <footer class="analytics-footer">
     TidelQ — Reversing Coastal Decline 🌊 | Built for Susegad Sprint 2026
   </footer>
 

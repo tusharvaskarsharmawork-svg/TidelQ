@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Community Issues — TidelQ</title>
+  <meta name="description" content="Vote and report critical coastal issues in Goa. Help prioritize problems for the authorities." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    html, body { overflow-x:hidden !important; overflow-y:auto !important; height:auto !important; }
+
+    /* Issue Card Styles */
+    .issue-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 20px;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .issue-card.trending {
+      border-color: rgba(255, 179, 71, 0.4);
+      box-shadow: 0 0 20px rgba(255, 179, 71, 0.15);
+    }
+
+    .issue-card.trending::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #FFB347, #FF6B6B);
+    }
+
+    .vote-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 60px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .vote-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+    .vote-btn.voted {
+      background: rgba(255, 179, 71, 0.15);
+      border-color: rgba(255, 179, 71, 0.4);
+      color: #FFB347;
+    }
+
+    .status-pill {
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .status-pill.open { background: rgba(255, 107, 107, 0.15); color: #FF6B6B; border: 1px solid rgba(255, 107, 107, 0.3); }
+    .status-pill.inprogress { background: rgba(255, 179, 71, 0.15); color: #FFB347; border: 1px solid rgba(255, 179, 71, 0.3); }
+    .status-pill.resolved { background: rgba(78, 205, 196, 0.15); color: #4ECDC4; border: 1px solid rgba(78, 205, 196, 0.3); }
+
+    .category-chip {
+      background: rgba(255,255,255,0.08);
+      color: var(--text-2);
+      font-size: 0.8rem;
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+
+    .form-input, .form-select, .form-textarea {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: #ffffff;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      font-size: 0.95rem;
+    }
+    
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      outline: none;
+      border-color: rgba(78, 205, 196, 0.5);
+      box-shadow: 0 0 0 2px rgba(78, 205, 196, 0.15);
+    }
+    
+    .form-select option {
+      background: #0f172a;
+      color: #fff;
+    }
+  </style>
+</head>
+<body class="report-page bg-black text-white">
+
+  <!-- Header -->
+  <header class="report-header sticky top-0 z-10 px-6 py-4 flex items-center justify-between">
+    <a href="index.html" class="flex items-center gap-2.5 no-underline">
+      <svg width="32" height="32" viewBox="0 0 40 40" fill="none">
+        <defs>
+          <linearGradient id="brandGrad2" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#FFB347"/>
+            <stop offset="50%" stop-color="#FF6B6B"/>
+            <stop offset="100%" stop-color="#4ECDC4"/>
+          </linearGradient>
+        </defs>
+        <circle cx="20" cy="20" r="18" fill="rgba(255,179,71,0.12)" stroke="url(#brandGrad2)" stroke-width="1.5"/>
+        <path d="M20 8 Q28 14 28 20 Q28 28 20 32 Q12 28 12 20 Q12 14 20 8Z" fill="rgba(255,179,71,0.25)" stroke="url(#brandGrad2)" stroke-width="1"/>
+        <circle cx="20" cy="20" r="5" fill="url(#brandGrad2)"/>
+      </svg>
+      <span class="brand-wordmark" style="font-size:16px">TidelQ</span>
+    </a>
+    <div class="flex items-center gap-3">
+      <button data-auth-btn id="nav-auth-btn" onclick="Auth?.showModal()" class="auth-btn">🔑 Sign In</button>
+      <a href="index.html" class="back-link flex items-center gap-1.5">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+        </svg>
+        Back to Map
+      </a>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <div class="report-hero">
+    <div class="report-hero-glow" aria-hidden="true"></div>
+    <div class="inline-flex items-center gap-2 mb-5 px-4 py-2 hero-badge">
+      <div class="live-dot"></div>
+      <span>PUBLIC FORUM</span>
+    </div>
+
+    <h1 class="report-hero-title">Community Issues</h1>
+    <p class="report-hero-subtitle">
+      Vote to prioritize coastal hazards, pollution, and infrastructure problems.<br>
+      High-priority issues are directly flagged to local authorities.
+    </p>
+  </div>
+
+  <!-- Main Layout -->
+  <main class="max-w-6xl mx-auto px-6 py-10 grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
+    
+    <!-- Left Col: Issues Feed -->
+    <div class="md:col-span-2 space-y-6">
+      
+      <!-- Toolbar -->
+      <div class="flex items-center justify-between mb-8 pb-4 border-b border-[rgba(255,255,255,0.08)]">
+        <h2 class="text-xl font-bold font-display tracking-wide flex items-center gap-2">
+          Trending <span class="px-2 py-0.5 bg-[rgba(255,179,71,0.15)] text-[var(--sun)] text-sm rounded-full" id="issues-count">0</span>
+        </h2>
+        <div class="flex gap-2">
+          <select id="filter-category" class="bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-[var(--seafoam)]">
+            <option value="All">All Categories</option>
+            <option value="Pollution">Pollution</option>
+            <option value="Safety">Safety</option>
+            <option value="Infrastructure">Infrastructure</option>
+            <option value="Wildlife">Wildlife</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Feed Container -->
+      <div id="issues-feed" class="space-y-4">
+        <!-- Skeleton Loading -->
+        <div class="issue-card animate-pulse flex gap-5">
+          <div class="w-16 h-20 bg-[rgba(255,255,255,0.05)] rounded-xl"></div>
+          <div class="flex-1 space-y-3">
+            <div class="h-6 bg-[rgba(255,255,255,0.05)] rounded w-3/4"></div>
+            <div class="h-4 bg-[rgba(255,255,255,0.05)] rounded w-1/4"></div>
+            <div class="h-10 bg-[rgba(255,255,255,0.05)] rounded w-full"></div>
+          </div>
+        </div>
+      </div>
+      
+    </div>
+
+    <!-- Right Col: Raise Issue Form -->
+    <div class="md:col-span-1">
+      <div class="sticky top-24 bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.06)] rounded-2xl p-6 backdrop-blur-md">
+        <h3 class="text-xl font-bold font-display mb-2">Raise an Issue</h3>
+        <p class="text-sm text-[var(--text-2)] mb-6">See a problem? Let the community and authorities know.</p>
+        
+        <form id="raise-issue-form" class="space-y-4">
+          <div class="form-group">
+            <label class="form-label">Issue Title</label>
+            <input type="text" id="issue-title" name="title" class="form-input" required placeholder="e.g. Broken glass on sand" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Beach Location</label>
+            <select id="issue-beach" name="beach_id" class="form-select" required>
+              <option value="" disabled selected>Select Beach</option>
+              <!-- Populated via JS -->
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <select id="issue-category" name="category" class="form-select" required>
+              <option value="Pollution">Pollution</option>
+              <option value="Safety">Safety / Hazards</option>
+              <option value="Infrastructure">Infrastructure</option>
+              <option value="Wildlife">Wildlife</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Description (Optional)</label>
+            <textarea id="issue-desc" name="description" class="form-textarea" rows="3" placeholder="Provide more details..."></textarea>
+          </div>
+
+          <button type="submit" id="submit-issue-btn" class="submit-btn w-full mt-4">
+            <span>Submit Issue</span>
+            <svg class="submit-icon" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+            </svg>
+          </button>
+        </form>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/issues.js"></script>
+</body>
+</html>
