@@ -1,11 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  async redirects() {
-    return [
-      { source: '/', destination: '/index.html', permanent: false },
-    ];
+  swcMinify: true,
+  // We explicitly allow serving static HTML files from public/ 
+  // without interfering with the Next.js router.
+  images: {
+    unoptimized: true,
   },
-};
+  // Ensure we can deploy to Render (Web Service)
+}
 
-module.exports = nextConfig;
+module.exports = nextConfig

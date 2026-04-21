@@ -1,7 +1,7 @@
-// src/pages/index.js — Redirect root to the landing page (index.html)
+// src/pages/index.js — Redirect root to the landing page (landing.html)
 export async function getServerSideProps() {
   return {
-    redirect: { destination: '/index.html', permanent: false },
+    redirect: { destination: '/landing.html', permanent: false },
   };
 }
 
