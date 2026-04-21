@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// analytics.js — AntiGravity Analytics Dashboard
+// analytics.js — TidelQ Analytics Dashboard
 // ═══════════════════════════════════════════════════════════════════════════
 
 (async function () {

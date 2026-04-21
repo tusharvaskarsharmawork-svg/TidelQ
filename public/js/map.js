@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// map.js — AntiGravity v2.0: Full coastal intelligence frontend
+// map.js — TidelQ v2.0: Full coastal intelligence frontend
 // ═══════════════════════════════════════════════════════════════════════════
 
 (function () {
@@ -642,7 +642,7 @@
 
   function sendDangerAlert(beachName, score) {
     if ('Notification' in window && Notification.permission === 'granted' && score < 50) {
-      new Notification('🚨 AntiGravity Danger Alert', {
+      new Notification('🚨 TidelQ Danger Alert', {
         body: `${beachName} safety score dropped to ${score}! Avoid swimming.`,
         icon: '/favicon.ico',
         tag: `danger-${beachName}`,

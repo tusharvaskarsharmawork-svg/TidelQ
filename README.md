@@ -1,6 +1,6 @@
-# AntiGravity v2.0 – Goa Coastal Safety & Environmental Monitor
+# TidelQ v2.0 – Goa Coastal Safety & Environmental Monitor
 
-AntiGravity is a robust AI-driven marine safety monitoring system specifically adapted for the vibrant coastline of Goa, India. Utilizing live satellite endpoints, AI generative reporting, and community-driven incident logs—AntiGravity maps over 40 distinct Goan beaches to automatically calculate dynamic hazard conditions in real-time.
+TidelQ is a robust AI-driven marine safety monitoring system specifically adapted for the vibrant coastline of Goa, India. Utilizing live satellite endpoints, AI generative reporting, and community-driven incident logs—TidelQ maps over 40 distinct Goan beaches to automatically calculate dynamic hazard conditions in real-time.
 
 ## Features & Recent Enhancements
 

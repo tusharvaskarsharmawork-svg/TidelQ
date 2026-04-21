@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════════════
--- AntiGravity — Supabase PostgreSQL Schema
+-- TidelQ — Supabase PostgreSQL Schema
 -- Run this in your Supabase SQL Editor: https://app.supabase.com → SQL Editor
 -- ═══════════════════════════════════════════════════════════════════════════
 
