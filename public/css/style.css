@@ -353,7 +353,7 @@ h1, h2, h3, .font-display {
 }
 
 /* ─── CHIPS & TAGS ───────────────────────────────────────────────── */
-.chip {
+.chip, .tag {
   background: rgba(78, 205, 196, 0.10);
   border: 1px solid rgba(78, 205, 196, 0.22);
   color: var(--seafoam);
@@ -363,7 +363,6 @@ h1, h2, h3, .font-display {
   border-radius: 999px;
   letter-spacing: 0.04em;
 }
-.tag { /* alias */ }
 
 /* ─── BEACH LIST ITEMS ───────────────────────────────────────────── */
 .beach-list-item {
