@@ -1,0 +1,70 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "baga",
+        "name": "Baga Beach",
+        "current_score": 72,
+        "trend": "stable",
+        "ai_attribution": "Moderate chlorophyll levels detected. Recent reports of plastic debris near northern shoreline. Water temperature within seasonal norms.",
+        "history": [68, 71, 74, 70, 72, 69, 72],
+        "recent_reports": []
+      },
+      "geometry": { "type": "Point", "coordinates": [73.7525, 15.5562] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "calangute",
+        "name": "Calangute Beach",
+        "current_score": 65,
+        "trend": "declining",
+        "ai_attribution": "Elevated SST (+1.2°C above baseline). High visitor density contributing to increased waste reports. Enhanced monitoring recommended.",
+        "history": [78, 75, 71, 68, 66, 64, 65],
+        "recent_reports": []
+      },
+      "geometry": { "type": "Point", "coordinates": [73.7553, 15.5440] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "anjuna",
+        "name": "Anjuna Beach",
+        "current_score": 81,
+        "trend": "improving",
+        "ai_attribution": "Clean water conditions. SST within normal range. Low hazard report density. Community cleanup initiative showing positive results.",
+        "history": [74, 76, 78, 79, 80, 80, 81],
+        "recent_reports": []
+      },
+      "geometry": { "type": "Point", "coordinates": [73.7403, 15.5738] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "palolem",
+        "name": "Palolem Beach",
+        "current_score": 88,
+        "trend": "improving",
+        "ai_attribution": "Excellent environmental conditions. Clear water visibility confirmed by satellite. Minimal waste. Community conservation efforts effective.",
+        "history": [83, 84, 85, 86, 87, 87, 88],
+        "recent_reports": []
+      },
+      "geometry": { "type": "Point", "coordinates": [74.0232, 15.0095] }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "vagator",
+        "name": "Vagator Beach",
+        "current_score": 58,
+        "trend": "declining",
+        "ai_attribution": "Below-average safety score. Seasonal seaweed bloom detected via Copernicus satellite. Reduced water clarity. Exercise caution when swimming.",
+        "history": [70, 67, 63, 60, 59, 58, 58],
+        "recent_reports": []
+      },
+      "geometry": { "type": "Point", "coordinates": [73.7447, 15.5994] }
+    }
+  ]
+}

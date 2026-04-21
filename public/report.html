@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Report a Hazard — TidelQ</title>
+  <meta name="description" content="Report a beach hazard in Goa. Upload a photo, share your location, and help protect Goa's coastline with the TidelQ community." />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="/css/style.css" />
+
+  <!-- Override: report page needs scroll, not overflow:hidden -->
+  <style>
+    html, body {
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+      height: auto !important;
+    }
+  </style>
+</head>
+<body class="report-page">
+
+  <!-- ── Header ─────────────────────────────────────────────────── -->
+  <header class="report-header sticky top-0 z-10 px-5 py-4 flex items-center justify-between">
+    <a href="/index.html" class="flex items-center gap-2.5 no-underline" style="text-decoration:none">
+      <svg width="26" height="26" viewBox="0 0 34 34" fill="none">
+        <polygon points="17,3 31,10 31,24 17,31 3,24 3,10" fill="rgba(56,189,248,0.15)" stroke="#38bdf8" stroke-width="1.5"/>
+        <polygon points="17,9 25,13.5 25,20.5 17,25 9,20.5 9,13.5" fill="rgba(56,189,248,0.35)" stroke="#38bdf8" stroke-width="1"/>
+        <circle cx="17" cy="17" r="4" fill="#38bdf8"/>
+      </svg>
+      <span class="text-white font-black text-base tracking-tight">TidelQ</span>
+    </a>
+    <div class="flex items-center gap-3">
+      <button data-auth-btn id="nav-auth-btn" onclick="Auth.showModal()" style="
+        background:rgba(14,165,233,0.12); border:1px solid rgba(14,165,233,0.25);
+        color:#38bdf8; padding:6px 14px; border-radius:8px; font-size:12px;
+        font-weight:600; cursor:pointer; font-family:inherit; transition:all .15s;
+      ">🔑 Sign In</button>
+      <a href="/index.html" class="flex items-center gap-1.5 no-underline" style="text-decoration:none;color:#64748b;font-size:13px;font-weight:500">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+        </svg>
+        Back to Map
+      </a>
+    </div>
+  </header>
+
+  <!-- ── Hero ──────────────────────────────────────────────────── -->
+  <div class="relative px-5 pt-8 pb-6 text-center overflow-hidden">
+    <!-- Gradient glow -->
+    <div style="position:absolute;top:-60px;left:50%;transform:translateX(-50%);width:400px;height:250px;
+      background:radial-gradient(circle, rgba(56,189,248,0.08) 0%, transparent 70%);pointer-events:none"></div>
+
+    <div class="inline-flex items-center gap-2 mb-4 px-4 py-2 rounded-full"
+      style="background:rgba(56,189,248,0.1);border:1px solid rgba(56,189,248,0.2)">
+      <div class="w-1.5 h-1.5 rounded-full live-pulse" style="background:#38bdf8"></div>
+      <span style="color:#38bdf8;font-size:11px;font-weight:700;letter-spacing:0.06em">COMMUNITY MONITORING</span>
+    </div>
+
+    <h1 class="text-white font-black text-3xl tracking-tight mb-2">Report a Hazard</h1>
+    <p style="color:#64748b;font-size:14px;max-width:380px;margin:0 auto;line-height:1.55">
+      Help protect Goa's coastline. Your report is processed by AI and updates the safety score in real-time.
+    </p>
+  </div>
+
+  <!-- ── Form ──────────────────────────────────────────────────── -->
+  <div class="px-4 pb-12" style="max-width:520px;margin:0 auto">
+    <div id="form-card" class="form-card p-6">
+
+      <!-- Error message -->
+      <div id="error-msg" style="display:none;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.25);
+        border-radius:9px;padding:11px 14px;color:#f87171;font-size:13px;margin-bottom:16px"></div>
+
+      <!-- Form content wrapper (hidden on success) -->
+      <div id="form-content">
+        <form id="hazard-form" class="flex flex-col gap-5" novalidate>
+
+          <!-- Beach Selector -->
+          <div>
+            <label class="form-label" for="beach-select">Select Beach *</label>
+            <select id="beach-select" class="form-select" required>
+              <option value="">— Choose a beach —</option>
+              <option value="baga">Baga Beach</option>
+              <option value="calangute">Calangute Beach</option>
+              <option value="anjuna">Anjuna Beach</option>
+              <option value="palolem">Palolem Beach</option>
+              <option value="vagator">Vagator Beach</option>
+            </select>
+            <p id="beach-error" style="display:none;color:#f87171;font-size:12px;margin-top:6px;font-weight:600">⚠ Please select a beach to continue.</p>
+          </div>
+
+          <!-- Photo Upload -->
+          <div>
+            <label class="form-label">Photo Evidence</label>
+            <div id="upload-zone" class="upload-zone">
+              <!-- Hidden file input (entire zone is clickable) -->
+              <input type="file" id="image-input" accept="image/*" capture="environment" />
+              <div id="upload-placeholder" class="flex flex-col items-center gap-3 pointer-events-none">
+                <div style="width:48px;height:48px;border-radius:12px;background:rgba(56,189,248,0.1);
+                  border:1px solid rgba(56,189,248,0.2);display:flex;align-items:center;justify-content:center">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="1.8">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <circle cx="12" cy="13" r="4"/>
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-white font-semibold text-sm">Tap to take a photo</p>
+                  <p style="color:#475569;font-size:12px;margin-top:2px">or drag & drop an image here</p>
+                </div>
+                <span style="background:rgba(56,189,248,0.1);border:1px solid rgba(56,189,248,0.2);
+                  color:#38bdf8;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px">
+                  📷 Camera / Gallery
+                </span>
+              </div>
+              <img id="preview" class="upload-preview" alt="Uploaded hazard photo" />
+            </div>
+          </div>
+
+          <!-- Severity Selection -->
+          <div>
+            <label class="form-label">Severity Level</label>
+            <div class="severity-grid">
+              <label class="severity-card low">
+                <input type="radio" name="severity" value="low" />
+                🟡 Low
+              </label>
+              <label class="severity-card medium">
+                <input type="radio" name="severity" value="medium" checked />
+                🟠 Medium
+              </label>
+              <label class="severity-card high">
+                <input type="radio" name="severity" value="high" />
+                🔴 High
+              </label>
+            </div>
+          </div>
+
+          <!-- Location Capture -->
+          <div>
+            <label class="form-label">Your Location</label>
+            <div class="flex items-center gap-3">
+              <button type="button" id="geo-btn" class="geo-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="10" r="3"/>
+                  <path d="M12 2a8 8 0 0 0-8 8c0 5.4 7 11.5 7.35 11.76a1 1 0 0 0 1.3 0C13 21.5 20 15.4 20 10a8 8 0 0 0-8-8z"/>
+                </svg>
+                Auto-detect GPS
+              </button>
+              <p id="loc-status" style="color:#475569;font-size:12px;flex:1">
+                Optional — helps pinpoint the hazard on the map.
+              </p>
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div>
+            <label class="form-label" for="description">Description</label>
+            <textarea id="description" class="form-textarea" rows="3"
+              placeholder="Describe what you observed — e.g. 'Large pile of plastic bottles near the northern rocks, likely washed in overnight.'">
+            </textarea>
+          </div>
+
+          <!-- Inline submit error -->
+          <div id="submit-error" style="
+            display:none;
+            background:rgba(248,113,113,0.12);
+            border:1px solid rgba(248,113,113,0.35);
+            border-radius:9px; padding:11px 14px;
+            color:#f87171; font-size:13px; font-weight:600;
+            text-align:center;
+          "></div>
+
+          <!-- Submit -->
+          <button type="submit" id="submit-btn" class="submit-btn">
+            <svg width="17" height="17" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+            </svg>
+            Submit Report
+          </button>
+
+          <p class="text-center" style="color:#334155;font-size:11px;line-height:1.5">
+            Your report is anonymised and processed by Vision AI.<br/>
+            It helps update the live Beach Safety Score.
+          </p>
+
+        </form>
+      </div><!-- /form-content -->
+
+      <!-- ── Success State ─────────────────────────────── -->
+      <div id="success-box" class="success-overlay">
+        <div class="success-icon">
+          <svg width="30" height="30" fill="none" viewBox="0 0 24 24" stroke="#4ade80" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <h2 class="text-white font-black text-xl">Report Submitted!</h2>
+        <p style="color:#64748b;font-size:13px;max-width:280px;line-height:1.55">
+          Your hazard report is being analysed by our AI. The beach safety score will update shortly.
+        </p>
+        <p id="success-tags" style="color:#38bdf8;font-size:12px;font-weight:600;margin-top:4px"></p>
+        <p style="color:#475569;font-size:12px;margin-top:8px">Redirecting to map in 4 seconds…</p>
+        <a href="/index.html" class="report-cta-btn mt-2" style="padding:11px 24px;font-size:13px;text-decoration:none">
+          Back to Map →
+        </a>
+      </div>
+
+    </div><!-- /form-card -->
+
+    <!-- Bottom attribution -->
+    <p class="text-center mt-5" style="color:#1e293b;font-size:12px">
+      TidelQ • Susegad Sprint 2026 • Reversing Coastal Decline 🌊
+    </p>
+
+  </div>
+
+  <!-- Scripts -->
+  <!-- Supabase Browser Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    // Init auth on page load
+    document.addEventListener('DOMContentLoaded', () => Auth.init());
+  </script>
+  <script src="/js/report.js"></script>
+
+</body>
+</html>

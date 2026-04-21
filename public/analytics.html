@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Analytics — AntiGravity Coastal Intelligence</title>
+  <meta name="description" content="Goa coastline analytics: health index, beach rankings, environmental trends, and report heatmap." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body class="analytics-page">
+
+  <!-- Header -->
+  <header class="analytics-header">
+    <div class="flex items-center gap-3">
+      <a href="/" style="color:#38bdf8;font-size:13px;font-weight:600;text-decoration:none" class="flex items-center gap-1.5">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+        </svg>
+        Dashboard
+      </a>
+      <div style="width:1px;height:18px;background:rgba(148,163,184,0.15)"></div>
+      <h1 class="text-white font-black text-lg">📊 Coastline Analytics</h1>
+    </div>
+    <div class="flex items-center gap-2">
+      <div class="w-2 h-2 rounded-full live-pulse" style="background:#4ade80"></div>
+      <span style="color:#4ade80;font-size:11px;font-weight:700;letter-spacing:0.06em">LIVE DATA</span>
+    </div>
+  </header>
+
+  <!-- Grid -->
+  <div class="analytics-grid" id="analytics-grid">
+
+    <!-- Coastline Health Index -->
+    <div class="analytics-card">
+      <div class="analytics-stat">
+        <p style="color:#64748b;font-size:11px;font-weight:700;letter-spacing:0.08em;margin-bottom:8px">GOA COASTLINE HEALTH INDEX</p>
+        <div id="health-index" class="analytics-stat-value">—</div>
+        <p style="color:#475569;font-size:12px;margin-top:4px">out of 100</p>
+      </div>
+    </div>
+
+    <!-- Score Distribution -->
+    <div class="analytics-card">
+      <p style="color:#64748b;font-size:11px;font-weight:700;letter-spacing:0.08em;margin-bottom:12px">SCORE DISTRIBUTION</p>
+      <div class="flex items-end justify-center gap-6" style="height:100px">
+        <div class="text-center">
+          <div id="dist-safe" class="text-3xl font-black" style="color:#4ade80">—</div>
+          <div style="color:#64748b;font-size:10px;font-weight:600;margin-top:4px">SAFE</div>
+        </div>
+        <div class="text-center">
+          <div id="dist-moderate" class="text-3xl font-black" style="color:#fb923c">—</div>
+          <div style="color:#64748b;font-size:10px;font-weight:600;margin-top:4px">MODERATE</div>
+        </div>
+        <div class="text-center">
+          <div id="dist-danger" class="text-3xl font-black" style="color:#f87171">—</div>
+          <div style="color:#64748b;font-size:10px;font-weight:600;margin-top:4px">DANGER</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="analytics-card">
+      <p style="color:#64748b;font-size:11px;font-weight:700;letter-spacing:0.08em;margin-bottom:12px">QUICK STATS</p>
+      <div class="grid grid-cols-2 gap-3">
+        <div class="stat-card">
+          <div style="color:#38bdf8;font-size:10px;font-weight:700;margin-bottom:2px">BEACHES</div>
+          <div id="stat-total" class="text-white font-black text-2xl">—</div>
+        </div>
+        <div class="stat-card">
+          <div style="color:#38bdf8;font-size:10px;font-weight:700;margin-bottom:2px">REPORTS</div>
+          <div id="stat-reports" class="text-white font-black text-2xl">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7-Day Coastline Health Trend -->
+    <div class="analytics-card wide">
+      <p style="color:#64748b;font-size:11px;font-weight:700;letter-spacing:0.08em;margin-bottom:12px">7-DAY COASTLINE HEALTH TREND</p>
+      <div style="height:180px">
+        <canvas id="health-trend-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- Best 5 Beaches -->
+    <div class="analytics-card">
+      <p style="color:#64748b;font-size:11px;font-weight:700;letter-spacing:0.08em;margin-bottom:12px">🏆 TOP 5 SAFEST BEACHES</p>
+      <div id="best-5"></div>
+    </div>
+
+    <!-- Worst 5 Beaches -->
+    <div class="analytics-card">
+      <p style="color:#64748b;font-size:11px;font-weight:700;letter-spacing:0.08em;margin-bottom:12px">⚠️ TOP 5 AT-RISK BEACHES</p>
+      <div id="worst-5"></div>
+    </div>
+
+    <!-- Most Reported Beaches -->
+    <div class="analytics-card wide">
+      <p style="color:#64748b;font-size:11px;font-weight:700;letter-spacing:0.08em;margin-bottom:12px">📋 MOST REPORTED BEACHES</p>
+      <div style="height:200px">
+        <canvas id="reports-chart"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <footer style="text-align:center;padding:20px;color:#334155;font-size:12px">
+    AntiGravity — Reversing Coastal Decline 🌊 | Built for Susegad Sprint 2026
+  </footer>
+
+  <script src="/js/analytics.js"></script>
+</body>
+</html>

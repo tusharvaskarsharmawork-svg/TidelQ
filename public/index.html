@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AntiGravity — Live Coastal Intelligence | Goa</title>
+  <meta name="description" content="Real-time AI-powered coastal intelligence for Goa. Tide forecasts, wave analysis, UV safety, air quality, crowd density — all in one dashboard." />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <!-- MapLibre GL JS -->
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Custom Design System -->
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body class="overflow-hidden" style="background:#030712">
+
+<div id="app" class="flex h-screen w-screen">
+
+  <!-- ══════════════════════════════════════════════════════
+       LEFT SIDEBAR
+  ══════════════════════════════════════════════════════════ -->
+  <aside id="sidebar" class="sidebar flex-shrink-0 flex flex-col h-full" style="width:380px">
+
+    <!-- Header -->
+    <div class="sidebar-header px-6 py-5 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="brand-icon">
+          <svg width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="17,3 31,10 31,24 17,31 3,24 3,10" fill="rgba(56,189,248,0.15)" stroke="#38bdf8" stroke-width="1.5"/>
+            <polygon points="17,9 25,13.5 25,20.5 17,25 9,20.5 9,13.5" fill="rgba(56,189,248,0.35)" stroke="#38bdf8" stroke-width="1"/>
+            <circle cx="17" cy="17" r="4" fill="#38bdf8"/>
+            <circle cx="17" cy="17" r="2" fill="#0ea5e9"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-white font-black text-lg leading-none tracking-tight">AntiGravity</h1>
+          <p class="mt-0.5" style="color:#38bdf8;font-size:11px;font-weight:600;letter-spacing:0.04em">COASTAL INTELLIGENCE</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button data-auth-btn id="sidebar-auth-btn" onclick="Auth.showModal()" style="
+          background:rgba(14,165,233,0.12); border:1px solid rgba(14,165,233,0.2);
+          color:#38bdf8; padding:5px 11px; border-radius:7px; font-size:11px;
+          font-weight:600; cursor:pointer; font-family:inherit; white-space:nowrap;
+        ">🔑 Sign In</button>
+        <div class="flex items-center gap-1.5">
+          <div class="w-2 h-2 rounded-full live-pulse" style="background:#4ade80"></div>
+          <span style="color:#4ade80;font-size:11px;font-weight:700;letter-spacing:0.06em">LIVE</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="px-5 pt-3 pb-3 grid grid-cols-3 gap-2.5">
+      <div class="stat-card">
+        <div style="color:#38bdf8;font-size:10px;font-weight:700;letter-spacing:0.06em;margin-bottom:4px">BEACHES</div>
+        <div id="beaches-count" class="text-white font-black text-xl">40</div>
+      </div>
+      <div class="stat-card">
+        <div style="color:#38bdf8;font-size:10px;font-weight:700;letter-spacing:0.06em;margin-bottom:4px">AVG SCORE</div>
+        <div id="avg-score" class="text-white font-black text-xl">—</div>
+      </div>
+      <div class="stat-card">
+        <div style="color:#38bdf8;font-size:10px;font-weight:700;letter-spacing:0.06em;margin-bottom:4px">REPORTS</div>
+        <div id="report-count" class="text-white font-black text-xl">—</div>
+      </div>
+    </div>
+
+    <div class="sidebar-divider mx-5 mb-1"></div>
+
+    <!-- Scrollable Content -->
+    <div class="flex-1 overflow-y-auto sidebar-scroll">
+
+      <!-- ── Beach List Panel ── -->
+      <div id="beach-list-panel" class="px-5 py-3">
+        <div class="mb-3">
+          <input type="search" id="beach-search" placeholder="Search beaches..." class="w-full bg-[#1e293b] text-white border border-[#334155] rounded-md px-3 py-2 text-sm focus:outline-none focus:border-[#38bdf8] transition-colors" />
+        </div>
+        <div class="flex justify-between items-center mb-2.5">
+          <p style="color:#64748b;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase">Monitored Beaches</p>
+        </div>
+        <div id="beach-list" class="flex flex-col gap-2">
+          <div class="beach-skeleton"></div>
+          <div class="beach-skeleton"></div>
+          <div class="beach-skeleton"></div>
+          <div class="beach-skeleton"></div>
+          <div class="beach-skeleton"></div>
+        </div>
+      </div>
+
+      <!-- ── Beach Detail Panel ── -->
+      <div id="beach-detail-panel" class="hidden px-5 py-3">
+
+        <!-- Back -->
+        <button id="back-btn" class="flex items-center gap-1.5 mb-4 transition-colors"
+          style="background:none;border:none;color:#38bdf8;font-size:13px;font-weight:600;cursor:pointer;padding:0;font-family:inherit">
+          <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+          </svg>
+          All Beaches
+        </button>
+
+        <!-- Name + Grade + Badge -->
+        <div class="flex items-start justify-between mb-4">
+          <div>
+            <h2 id="detail-name" class="text-white font-black text-xl leading-tight">Beach Name</h2>
+            <div class="flex items-center gap-2 mt-1.5">
+              <span id="detail-grade" class="grade-badge grade-b">B+</span>
+              <div id="detail-trend" class="flex items-center gap-1.5">
+                <span class="trend-icon text-sm font-bold text-slate-400">→</span>
+                <span class="trend-label text-xs font-medium text-slate-400">Stable</span>
+              </div>
+            </div>
+          </div>
+          <span id="detail-status-badge" class="status-badge caution">CAUTION</span>
+        </div>
+
+        <!-- Weather Alert Banner -->
+        <div id="weather-alert" class="weather-alert mb-3">
+          <span>⚡</span>
+          <span id="weather-alert-text">Severe weather detected in this zone</span>
+        </div>
+
+        <!-- Score Ring -->
+        <div class="flex justify-center mb-4">
+          <div class="score-ring-container">
+            <svg width="160" height="160" viewBox="0 0 160 160" class="score-ring-svg">
+              <circle cx="80" cy="80" r="66" fill="none" stroke="rgba(100,116,139,0.18)" stroke-width="10"/>
+              <circle id="score-arc" cx="80" cy="80" r="66" fill="none"
+                stroke="#fb923c" stroke-width="10"
+                stroke-dasharray="414.69" stroke-dashoffset="414.69"
+                stroke-linecap="round"
+                transform="rotate(-90 80 80)"
+                class="score-arc-transition"/>
+            </svg>
+            <div class="score-center absolute inset-0 flex flex-col items-center justify-center">
+              <div id="detail-score" class="font-black leading-none" style="font-size:40px;color:#fb923c">—</div>
+              <div style="color:#64748b;font-size:10px;font-weight:700;letter-spacing:0.08em;margin-top:4px">SAFETY SCORE</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Grade Bar -->
+        <div class="mb-4">
+          <div class="flex justify-between mb-1.5" style="color:#475569;font-size:10px">
+            <span>Dangerous</span><span>Safe</span>
+          </div>
+          <div class="grade-track">
+            <div id="grade-indicator" class="grade-indicator" style="left:65%"></div>
+          </div>
+          <div class="flex justify-between mt-1.5" style="font-size:11px;font-weight:800">
+            <span style="color:#f87171">F</span>
+            <span style="color:#fb923c">D</span>
+            <span style="color:#fbbf24">C</span>
+            <span style="color:#a3e635">B</span>
+            <span style="color:#4ade80">A</span>
+          </div>
+        </div>
+
+        <!-- AI Attribution + Risk Factors + Recommendations -->
+        <div class="ai-panel mb-3">
+          <div class="flex items-center gap-2 mb-2">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
+            </svg>
+            <span style="color:#38bdf8;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase">AI Analysis</span>
+          </div>
+          <p id="detail-attribution" style="color:#cbd5e1;font-size:13px;line-height:1.55">Analysing environmental data…</p>
+
+          <!-- Risk Factors -->
+          <div id="risk-factors-section" class="mt-3 hidden">
+            <div class="section-header">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              Risk Factors
+            </div>
+            <ul id="risk-factors-list" class="risk-list"></ul>
+          </div>
+
+          <!-- Recommendations -->
+          <div id="recommendations-section" class="mt-3 hidden">
+            <div class="section-header">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              Recommendations
+            </div>
+            <ul id="recommendations-list" class="rec-list"></ul>
+          </div>
+        </div>
+
+        <!-- ── 🌊 TIDE & WAVE INTELLIGENCE ── -->
+        <div class="section-header mt-4">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2"><path d="M2 12c2-3 4-3 6 0s4 3 6 0 4-3 6 0"/><path d="M2 18c2-3 4-3 6 0s4 3 6 0 4-3 6 0" opacity="0.5"/></svg>
+          Tide & Wave Intelligence
+        </div>
+
+        <!-- Marine Stats -->
+        <div class="grid grid-cols-3 gap-2 mb-2">
+          <div class="satellite-card text-center">
+            <div style="color:#64748b;font-size:10px;margin-bottom:2px">Wave</div>
+            <div id="detail-wave-ht" class="text-white font-bold text-sm">—m</div>
+          </div>
+          <div class="satellite-card text-center">
+            <div style="color:#64748b;font-size:10px;margin-bottom:2px">Swell</div>
+            <div id="detail-swell" class="text-white font-bold text-sm">—m</div>
+          </div>
+          <div class="satellite-card text-center">
+            <div style="color:#64748b;font-size:10px;margin-bottom:2px">Current</div>
+            <div class="flex items-center justify-center gap-1">
+              <span id="detail-current-vel" class="text-white font-bold text-sm">—</span>
+              <span id="detail-current-dir" class="dir-arrow" style="color:#38bdf8">↑</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tide Windows -->
+        <div id="tide-windows" class="flex flex-wrap gap-1.5 mb-2"></div>
+
+        <!-- Tide Chart -->
+        <div class="tide-card mb-3">
+          <div class="flex items-center justify-between mb-2">
+            <span style="color:#64748b;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase">24h Sea Level</span>
+            <span id="tide-source" style="color:#334155;font-size:10px">Marine API</span>
+          </div>
+          <div style="height:65px">
+            <canvas id="tide-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- ── 🧪 ENVIRONMENT QUALITY ── -->
+        <div class="section-header">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 12l3 3 5-5"/></svg>
+          Environment & UV Safety
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 mb-3">
+          <!-- EQI Card -->
+          <div class="eqi-card">
+            <div class="flex items-center justify-between mb-1">
+              <span style="color:#64748b;font-size:10px;font-weight:700">AIR QUALITY</span>
+              <span id="eqi-grade" style="font-size:11px;font-weight:800;color:#4ade80">A</span>
+            </div>
+            <div class="flex items-center gap-3">
+              <div class="eqi-mini-ring">
+                <svg width="48" height="48" viewBox="0 0 48 48">
+                  <circle cx="24" cy="24" r="19" fill="none" stroke="rgba(100,116,139,0.18)" stroke-width="5"/>
+                  <circle id="eqi-arc" cx="24" cy="24" r="19" fill="none"
+                    stroke="#4ade80" stroke-width="5"
+                    stroke-dasharray="119.38" stroke-dashoffset="23.88"
+                    stroke-linecap="round" transform="rotate(-90 24 24)"
+                    style="transition: all 1s ease"/>
+                </svg>
+                <div class="absolute inset-0 flex items-center justify-center">
+                  <span id="eqi-value" style="font-size:12px;font-weight:900;color:#f1f5f9">80</span>
+                </div>
+              </div>
+              <div>
+                <div style="color:#64748b;font-size:10px">PM2.5</div>
+                <div id="detail-pm25" class="text-white text-xs font-semibold">— µg/m³</div>
+                <div style="color:#64748b;font-size:10px;margin-top:2px">AQI</div>
+                <div id="detail-aqi" class="text-white text-xs font-semibold">—</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- UV Card -->
+          <div class="uv-gauge">
+            <div class="flex items-center justify-between mb-1">
+              <span style="color:#64748b;font-size:10px;font-weight:700">UV INDEX</span>
+              <span id="uv-level" style="font-size:10px;font-weight:700;color:#facc15">Moderate</span>
+            </div>
+            <div class="flex items-center gap-2 mb-1">
+              <span id="uv-value" style="font-size:28px;font-weight:900;color:#facc15;line-height:1">5</span>
+              <span style="color:#475569;font-size:10px">/11+</span>
+            </div>
+            <div class="uv-bar-track">
+              <div id="uv-indicator" class="uv-bar-indicator" style="left:45%"></div>
+            </div>
+            <p id="uv-advice" style="color:#94a3b8;font-size:10px;margin-top:4px;line-height:1.3">Wear sunscreen SPF 30+</p>
+          </div>
+        </div>
+
+        <!-- ── 🏖️ CROWD & TOURISM ── -->
+        <div class="section-header">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fb923c" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          Crowd & Tourism
+        </div>
+
+        <div class="crowd-meter mb-3">
+          <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+              <span id="crowd-emoji" style="font-size:16px">👥</span>
+              <span id="crowd-level" style="color:#f1f5f9;font-size:13px;font-weight:700">Moderate</span>
+            </div>
+            <span id="crowd-index" style="color:#64748b;font-size:11px;font-weight:600">42/100</span>
+          </div>
+          <div class="crowd-bar-track">
+            <div id="crowd-bar-fill" class="crowd-bar-fill" style="width:42%;background:linear-gradient(90deg,#4ade80,#facc15)"></div>
+          </div>
+          <p id="crowd-advice" style="color:#94a3b8;font-size:10px;margin-top:6px;line-height:1.3">Best visited during weekday mornings</p>
+        </div>
+
+        <!-- ── SATELLITE DATA ── -->
+        <div class="section-header">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          Satellite Data
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 mb-3">
+          <div class="satellite-card">
+            <div style="color:#64748b;font-size:11px;margin-bottom:3px">Sea Surface Temp</div>
+            <div id="detail-sst" class="text-white font-semibold text-sm">—°C</div>
+          </div>
+          <div class="satellite-card">
+            <div style="color:#64748b;font-size:11px;margin-bottom:3px">Wind Speed</div>
+            <div id="detail-wind" class="text-white font-semibold text-sm">— km/h</div>
+          </div>
+          <div class="satellite-card">
+            <div style="color:#64748b;font-size:11px;margin-bottom:3px">Chlorophyll-a</div>
+            <div id="detail-chlor" class="text-white font-semibold text-sm">— mg/m³</div>
+          </div>
+          <div class="satellite-card">
+            <div style="color:#64748b;font-size:11px;margin-bottom:3px">Turbidity</div>
+            <div id="detail-turb" class="text-white font-semibold text-sm">— NTU</div>
+          </div>
+        </div>
+
+        <!-- Trend Sparkline -->
+        <div class="chart-panel mb-3">
+          <div class="flex items-center justify-between mb-2">
+            <span style="color:#64748b;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase">7-Day Trend</span>
+            <span id="trend-label" style="color:#475569;font-size:11px;font-weight:600">Loading…</span>
+          </div>
+          <div style="height:70px">
+            <canvas id="sparkline"></canvas>
+          </div>
+        </div>
+
+        <!-- Recent Reports -->
+        <div class="mb-4">
+          <div class="flex items-center justify-between mb-2">
+            <span style="color:#64748b;font-size:10px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase">Community Reports</span>
+            <a id="report-link-detail" href="/report.html" style="color:#38bdf8;font-size:12px;font-weight:600;text-decoration:none">+ Report</a>
+          </div>
+          <div id="detail-reports" class="flex flex-col gap-2">
+            <p style="color:#475569;font-size:12px">Loading reports…</p>
+          </div>
+        </div>
+
+      </div><!-- /beach-detail-panel -->
+    </div><!-- /sidebar-scroll -->
+
+    <!-- Footer CTA -->
+    <div class="sidebar-footer px-5 py-3">
+      <div class="flex gap-2 mb-2">
+        <a id="report-cta-link" href="/report.html" class="report-cta-btn flex-1">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+          </svg>
+          Report Hazard
+        </a>
+        <a href="/analytics.html" class="report-cta-btn" style="background:linear-gradient(135deg,#7c3aed,#a855f7);flex:0 0 auto;padding:13px 16px">
+          📊
+        </a>
+      </div>
+      <p class="text-center" style="color:#334155;font-size:11px">AntiGravity — Reversing Coastal Decline 🌊</p>
+    </div>
+
+  </aside>
+
+  <!-- ══════════════════════════════════════════════════════
+       MAP AREA
+  ══════════════════════════════════════════════════════════ -->
+  <div class="flex-1 relative">
+
+    <!-- Map Canvas -->
+    <div id="map" class="absolute inset-0"></div>
+
+    <!-- Floating Top Bar -->
+    <div class="absolute top-4 left-1/2 z-10" style="transform:translateX(-50%)">
+      <div class="map-topbar flex items-center gap-3 px-5 py-2.5">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2">
+          <circle cx="12" cy="10" r="3"/>
+          <path d="M12 2a8 8 0 0 0-8 8c0 5.4 7.05 11.5 7.35 11.76a1 1 0 0 0 1.3 0C12.95 21.5 20 15.4 20 10a8 8 0 0 0-8-8z"/>
+        </svg>
+        <span style="color:#94a3b8;font-size:13px;font-weight:500">Goa Coastal Zone</span>
+        <div style="width:1px;height:14px;background:#334155"></div>
+        <span id="last-updated" style="color:#475569;font-size:12px">Updating…</span>
+      </div>
+    </div>
+
+    <!-- Layer Toggles -->
+    <div class="layer-toggles">
+      <button id="toggle-zones" class="layer-btn" title="Safety Zones">🛡️</button>
+      <button id="toggle-aqi" class="layer-btn" title="Air Quality">🧪</button>
+      <button id="toggle-crowd" class="layer-btn" title="Crowd Density">👥</button>
+    </div>
+
+    <!-- SOS Floating Button -->
+    <button id="sos-fab" class="sos-fab" title="Emergency SOS">SOS</button>
+
+    <!-- Legend -->
+    <div class="absolute bottom-8 right-5 z-10">
+      <div class="map-legend p-4">
+        <p style="color:#64748b;font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:10px">Safety Score</p>
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center gap-2.5">
+            <div style="width:11px;height:11px;border-radius:50%;background:#4ade80;box-shadow:0 0 6px rgba(74,222,128,0.6);flex-shrink:0"></div>
+            <span style="color:#cbd5e1;font-size:12px">Excellent (80–100)</span>
+          </div>
+          <div class="flex items-center gap-2.5">
+            <div style="width:11px;height:11px;border-radius:50%;background:#fb923c;box-shadow:0 0 6px rgba(251,146,60,0.6);flex-shrink:0"></div>
+            <span style="color:#cbd5e1;font-size:12px">Moderate (50–79)</span>
+          </div>
+          <div class="flex items-center gap-2.5">
+            <div style="width:11px;height:11px;border-radius:50%;background:#f87171;box-shadow:0 0 6px rgba(248,113,113,0.6);flex-shrink:0"></div>
+            <span style="color:#cbd5e1;font-size:12px">Poor (0–49)</span>
+          </div>
+        </div>
+        <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(148,163,184,0.1)" class="flex flex-col gap-1">
+          <div class="flex items-center gap-2">
+            <span style="font-size:10px">🟢</span><span style="color:#94a3b8;font-size:10px">Lifeguard Zone</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span style="font-size:10px">🔴</span><span style="color:#94a3b8;font-size:10px">Danger Zone</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span style="font-size:10px">🔷</span><span style="color:#94a3b8;font-size:10px">Safe Entry</span>
+          </div>
+        </div>
+        <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(148,163,184,0.1)">
+          <p style="color:#334155;font-size:10px">© OSM Contributors © CARTO</p>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /map area -->
+
+</div><!-- /app -->
+
+<!-- ══════════════════════════════════════════════════════
+     SOS OVERLAY
+══════════════════════════════════════════════════════════ -->
+<div id="sos-overlay" class="sos-overlay">
+  <div class="sos-card">
+    <div style="font-size:36px;margin-bottom:8px">🆘</div>
+    <h2 class="text-white font-black text-xl mb-1">Emergency SOS</h2>
+    <p style="color:#94a3b8;font-size:12px;margin-bottom:16px">Immediate help for coastal emergencies</p>
+
+    <div id="sos-nearest" style="color:#f87171;font-size:12px;font-weight:600;margin-bottom:12px;padding:8px;background:rgba(248,113,113,0.08);border-radius:8px">
+      📍 Nearest lifeguard: Calculating...
+    </div>
+
+    <div class="flex flex-col gap-2.5 mb-4">
+      <a href="tel:1554" class="sos-btn primary">📞 Coast Guard — 1554</a>
+      <a href="tel:100"  class="sos-btn">🚔 Police — 100</a>
+      <a href="tel:108"  class="sos-btn">🚑 Ambulance — 108</a>
+      <a href="tel:18002331188" class="sos-btn">📱 DISHA Helpline — 1800-233-1188</a>
+    </div>
+
+    <div id="sos-gps" style="color:#475569;font-size:11px;font-weight:500;margin-bottom:12px">
+      📍 GPS: Fetching coordinates...
+    </div>
+
+    <button id="sos-close" class="sos-btn" style="background:rgba(248,113,113,0.1);border-color:rgba(248,113,113,0.2);color:#f87171">
+      ✕ Close
+    </button>
+  </div>
+</div>
+
+<!-- MapLibre GL JS -->
+<script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+
+<!-- Supabase Browser Client -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<!-- App Scripts -->
+<script src="/js/api.js"></script>
+<script src="/js/auth.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => Auth.init());
+</script>
+<script src="/js/map.js"></script>
+
+</body>
+</html>
