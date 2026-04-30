@@ -174,11 +174,11 @@
       </p>
       
       <div class="flex flex-col sm:flex-row items-center gap-4 fade-up" style="transition-delay: 0.3s">
-        <a href="dashboard.html" onclick="markVisited()" class="btn-glow bg-[var(--seafoam)] text-black px-8 py-3.5 rounded-full font-bold text-lg hover:shadow-lg hover:shadow-[var(--seafoam)]/30 transition transform hover:-translate-y-1">
-          Get Started
+        <a href="dashboard.html" class="btn-glow bg-[var(--seafoam)] text-black px-8 py-3.5 rounded-full font-bold text-lg hover:shadow-lg hover:shadow-[var(--seafoam)]/30 transition transform hover:-translate-y-1">
+          Launch App
         </a>
-        <button onclick="signInLogic()" class="px-8 py-3.5 rounded-full font-bold text-lg text-white border border-[rgba(255,255,255,0.2)] hover:bg-[rgba(255,255,255,0.05)] transition">
-          Sign In
+        <button onclick="signUpLogic()" class="px-8 py-3.5 rounded-full font-bold text-lg text-white border border-[rgba(255,255,255,0.2)] hover:bg-[rgba(255,255,255,0.05)] transition">
+          Join Community
         </button>
       </div>
 
@@ -292,17 +292,28 @@
   </footer>
 
   <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="/js/auth.js"></script>
   <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const user = await Auth.init();
+      // If already logged in and they are on landing, they can stay or be prompted to launch
+      if (user) {
+        console.log("User is logged in:", user.email);
+      }
+    });
     // Mark visited locally
     function markVisited() {
       localStorage.setItem('tidelq_visited', 'true');
     }
 
-    // Mock Sign-In Logic
+    // Sign-In Logic
     function signInLogic() {
-      alert("Sign in feature currently relies on standard browser cookies. Redirecting to Application...");
-      markVisited();
-      window.location.href = "dashboard.html";
+      Auth?.showModal('signin');
+    }
+
+    function signUpLogic() {
+      Auth?.showModal('signup');
     }
 
     // Fade-in Observer

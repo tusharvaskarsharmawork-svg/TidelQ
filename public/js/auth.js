@@ -109,16 +109,31 @@ function injectModal() {
 window.Auth = {
   get user() { return _currentUser; },
 
-  async init() {
+  async init(options = {}) {
     injectModal();
     const { data: { session } } = await _sb.auth.getSession();
     _currentUser = session?.user || null;
+    
     _sb.auth.onAuthStateChange((_event, session) => {
       _currentUser = session?.user || null;
       _listeners.forEach((fn) => fn(_currentUser));
       this._updateUI();
+      
+      // If auth is required and user logs out, redirect to landing
+      if (options.required && !_currentUser) {
+        window.location.href = '/landing.html';
+      }
     });
+
     this._updateUI();
+
+    // Guard logic
+    if (options.required && !_currentUser) {
+      console.log("Auth required. Redirecting to landing...");
+      window.location.href = '/landing.html';
+      return null;
+    }
+
     return _currentUser;
   },
 
@@ -171,6 +186,9 @@ window.Auth = {
         const { error } = await _sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
         this.hideModal();
+        if (window.location.pathname.includes('landing.html') || window.location.pathname === '/') {
+          window.location.href = '/dashboard.html';
+        }
       }
     } catch (err) {
       this._showErr(err.message);
