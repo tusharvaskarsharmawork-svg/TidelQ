@@ -24,18 +24,30 @@ const DOM = {
 // ─── FETCH & RENDER ───────────────────────────────────────────────────────────
 
 async function init() {
-  if (window.Auth) {
-    await Auth.init();
+  console.log('[Issues] Initializing...');
+  
+  // Load data first so the page isn't empty
+  try {
+    await Promise.all([loadBeaches(), loadIssues()]);
+  } catch (err) {
+    console.error('[Issues] Data load failed:', err);
   }
-  await loadBeaches();
-  await loadIssues();
 
-  DOM.filterCat.addEventListener('change', (e) => {
+  // Then handle auth
+  if (window.Auth) {
+    try {
+      await Auth.init();
+    } catch (err) {
+      console.error('[Issues] Auth init failed:', err);
+    }
+  }
+
+  DOM.filterCat?.addEventListener('change', (e) => {
     currentFilter = e.target.value;
     renderIssues();
   });
 
-  DOM.form.addEventListener('submit', handleFormSubmit);
+  DOM.form?.addEventListener('submit', handleFormSubmit);
 }
 
 async function loadBeaches() {
