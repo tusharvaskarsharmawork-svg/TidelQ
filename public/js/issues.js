@@ -3,15 +3,8 @@
  */
 
 // ─── INIT & LOCAL USER ────────────────────────────────────────────────────────
-const getUserId = () => {
-  let uid = localStorage.getItem('tidelq_user_id');
-  if (!uid) {
-    uid = 'user_' + Math.random().toString(36).substr(2, 9);
-    localStorage.setItem('tidelq_user_id', uid);
-  }
-  return uid;
-};
-const USER_ID = getUserId();
+// ─── AUTH & USER ─────────────────────────────────────────────────────────────
+const getCurrentUser = () => window.Auth?.user;
 
 // ─── STATE ────────────────────────────────────────────────────────────────────
 let allIssues = [];
@@ -31,6 +24,9 @@ const DOM = {
 // ─── FETCH & RENDER ───────────────────────────────────────────────────────────
 
 async function init() {
+  if (window.Auth) {
+    await Auth.init();
+  }
   await loadBeaches();
   await loadIssues();
 
@@ -136,7 +132,7 @@ function renderIssues() {
           ${issue.description ? `<p class="text-[var(--text-2)] text-sm mb-3 whitespace-pre-wrap">${escapeHTML(issue.description)}</p>` : ''}
           
           <div class="text-xs text-[var(--text-3)] flex items-center justify-between">
-            <span>By ${escapeHTML(issue.created_by)}</span>
+            <span>By ${escapeHTML(issue.creator_name || issue.created_by)}</span>
             <span>${timeAgo(issue.created_at)}</span>
           </div>
         </div>
@@ -155,11 +151,16 @@ window.castVote = async function(issueId, newVote) {
   // Toggle off if clicking the same vote
   const finalVote = currentVote === newVote ? 0 : newVote;
 
-  try {
+    const user = getCurrentUser();
+    if (!user) {
+      Auth?.showModal('signin');
+      return;
+    }
+
     const res = await fetch('/api/issues/vote', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ issue_id: issueId, user_id: USER_ID, vote_type: finalVote })
+      body: JSON.stringify({ issue_id: issueId, user_id: user.id, vote_type: finalVote })
     });
     if (!res.ok) throw new Error('API Error');
 
@@ -184,12 +185,20 @@ async function handleFormSubmit(e) {
   DOM.submitBtn.innerHTML = 'Submitting...';
   DOM.submitBtn.disabled = true;
 
+  const user = getCurrentUser();
+  if (!user) {
+    Auth?.showModal('signin');
+    DOM.submitBtn.innerHTML = originalBtnHTML;
+    DOM.submitBtn.disabled = false;
+    return;
+  }
+
   const data = {
     title: document.getElementById('issue-title').value,
     beach_id: document.getElementById('issue-beach').value,
     category: document.getElementById('issue-category').value,
     description: document.getElementById('issue-desc').value,
-    created_by: 'User ' + USER_ID.substring(5, 9).toUpperCase()
+    created_by: user.id
   };
 
   try {

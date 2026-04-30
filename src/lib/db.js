@@ -71,9 +71,9 @@ const ISSUES_MOCK = global.__TIDELQ_ISSUES__;
 
 if (!global.__TIDELQ_VOTES__) {
   global.__TIDELQ_VOTES__ = [
-    { id: 'v1', user_id: 'user1', issue_id: '11111111-1111-1111-1111-111111111111', vote_type: 1 },
-    { id: 'v2', user_id: 'user2', issue_id: '11111111-1111-1111-1111-111111111111', vote_type: 1 },
-    { id: 'v3', user_id: 'user3', issue_id: '22222222-2222-2222-2222-222222222222', vote_type: 1 }
+    { id: 'v1', user_id: 'user1', issue_id: '11111111-1111-1111-1111-111111111111' },
+    { id: 'v2', user_id: 'user2', issue_id: '11111111-1111-1111-1111-111111111111' },
+    { id: 'v3', user_id: 'user3', issue_id: '22222222-2222-2222-2222-222222222222' }
   ];
 }
 const VOTES_MOCK = global.__TIDELQ_VOTES__;
@@ -339,10 +339,11 @@ export async function getIssues() {
   }
 
   const { data, error } = await client
-    .from('issues')
+    .from('community_issues')
     .select(`
       *,
-      votes (vote_type)
+      creator:profiles(display_name),
+      community_issue_votes (id)
     `)
     .order('created_at', { ascending: false });
 
@@ -353,10 +354,11 @@ export async function getIssues() {
 
   return data.map(issue => {
     let vote_count = 0;
-    if (issue.votes && Array.isArray(issue.votes)) {
-      vote_count = issue.votes.reduce((acc, v) => acc + (v.vote_type || 0), 0);
+    if (issue.community_issue_votes && Array.isArray(issue.community_issue_votes)) {
+      vote_count = issue.community_issue_votes.length;
     }
-    return { ...issue, vote_count };
+    const creator_name = issue.creator?.display_name || 'Anonymous';
+    return { ...issue, vote_count, creator_name };
   }).sort((a, b) => b.vote_count - a.vote_count);
 }
 
@@ -378,7 +380,7 @@ export async function createIssue(data) {
     return mockFallback();
   }
 
-  const { data: result, error } = await client.from('issues').insert([data]).select().single();
+  const { data: result, error } = await client.from('community_issues').insert([data]).select().single();
   if (error) {
     console.warn('[db] Supabase createIssue failed (missing table?):', error.message);
     return mockFallback(); // Fallback to memory
@@ -411,32 +413,24 @@ export async function voteIssue(user_id, issue_id, vote_type) {
 
   // With Supabase, check if vote exists
   const { data: existing, error: selectErr } = await client
-    .from('votes')
+    .from('community_issue_votes')
     .select('*')
     .eq('user_id', user_id)
     .eq('issue_id', issue_id)
     .single();
 
   if (selectErr && selectErr.code !== 'PGRST116') {
-     // Not a "Rows not found" error, likely missing table
-     console.warn('[db] Supabase votes select failed:', selectErr.message);
+     console.warn('[db] Supabase community_issue_votes select failed:', selectErr.message);
      return mockFallback();
   }
 
   if (existing) {
-    if (existing.vote_type === vote_type) {
-      // Toggle off
-      await client.from('votes').delete().eq('id', existing.id);
-      return { message: 'Vote removed' };
-    } else {
-      // Update
-      const { data, error } = await client.from('votes').update({ vote_type }).eq('id', existing.id).select();
-      if (error) return mockFallback();
-      return data;
-    }
+    // Toggle off (delete)
+    await client.from('community_issue_votes').delete().eq('id', existing.id);
+    return { message: 'Vote removed' };
   } else {
     // Insert
-    const { data, error } = await client.from('votes').insert([{ user_id, issue_id, vote_type }]).select();
+    const { data, error } = await client.from('community_issue_votes').insert([{ user_id, issue_id }]).select();
     if (error) return mockFallback();
     return data;
   }
