@@ -1,6 +1,7 @@
 /**
  * issues.js — Handles the Public Voting System for Coastal Issues
- * Refactored to use the public_issues table directly via Supabase client.
+ * Refactored to use the public_issues table directly via Supabase client
+ * and connected to beaches/profiles tables.
  */
 
 // ─── AUTH & USER ─────────────────────────────────────────────────────────────
@@ -37,7 +38,10 @@ async function init() {
 
   // Load data
   try {
-    await Promise.all([loadBeaches(), loadIssues()]);
+    // 1. Load beaches from DB
+    await loadBeachesFromDB();
+    // 2. Load issues with Profile names
+    await loadIssuesWithProfiles();
   } catch (err) {
     console.error('[Issues] Data load failed:', err);
   }
@@ -50,29 +54,30 @@ async function init() {
   DOM.form?.addEventListener('submit', handleFormSubmit);
 }
 
-async function loadBeaches() {
+async function loadBeachesFromDB() {
   try {
-    const res = await fetch('/assets/beaches.json');
-    const data = await res.json();
-    
-    if (data.type === 'FeatureCollection' && Array.isArray(data.features)) {
-      allBeaches = data.features.map(f => f.properties);
-    } else {
-      allBeaches = data;
-    }
+    const supabase = window.supabaseClient;
+    if (!supabase) return;
 
-    allBeaches.sort((a,b) => a.name.localeCompare(b.name));
+    const { data, error } = await supabase
+      .from('beaches')
+      .select('id, name')
+      .order('name', { ascending: true });
+
+    if (error) throw error;
+    
+    allBeaches = data || [];
     
     if (DOM.beachSelect) {
       DOM.beachSelect.innerHTML = `<option value="" disabled selected>Select Beach</option>` + 
         allBeaches.map(b => `<option value="${b.name}">${b.name}</option>`).join('');
     }
   } catch (err) {
-    console.error('Failed to load beaches JSON', err);
+    console.error('Failed to load beaches from DB', err);
   }
 }
 
-async function loadIssues() {
+async function loadIssuesWithProfiles() {
   // Show skeleton loading state
   DOM.feed.innerHTML = `
     <div class="issue-card animate-pulse flex gap-5">
@@ -89,15 +94,16 @@ async function loadIssues() {
     const supabase = window.supabaseClient;
     if (!supabase) throw new Error("Supabase client not initialized.");
 
+    // Fetch issues and join with profiles to get display_name
     const { data, error } = await supabase
       .from("public_issues")
-      .select("*")
+      .select(`
+        *,
+        profiles:user_id (display_name)
+      `)
       .order("votes", { ascending: false });
 
-    if (error) {
-      console.error('[Issues] Supabase error:', error.message);
-      throw error;
-    }
+    if (error) throw error;
 
     allIssues = data || [];
     renderIssues();
@@ -122,7 +128,6 @@ function renderIssues() {
     return;
   }
 
-  // Use local storage for upvote state to provide visual feedback
   const localVotes = JSON.parse(localStorage.getItem('my_public_issues_votes') || '{}');
 
   DOM.feed.innerHTML = filtered.map(issue => {
@@ -130,6 +135,7 @@ function renderIssues() {
     const isTrendingClass = isHighPriority ? 'trending' : '';
     const statusClass = issue.status ? issue.status.toLowerCase().replace(' ', '') : 'open';
     const statusText = issue.status || 'open';
+    const reporterName = issue.profiles?.display_name || 'Anonymous User';
 
     const myVote = localVotes[issue.id] || 0;
     const upvotedClass = myVote === 1 ? 'voted' : '';
@@ -164,7 +170,8 @@ function renderIssues() {
           ${issue.description ? `<p class="text-[var(--text-2)] text-sm mb-3 whitespace-pre-wrap">${escapeHTML(issue.description)}</p>` : ''}
           
           <div class="text-xs text-[var(--text-3)] flex items-center justify-between">
-            <span>Posted ${timeAgo(issue.created_at)}</span>
+            <span>Reported by <b>${escapeHTML(reporterName)}</b></span>
+            <span>${timeAgo(issue.created_at)}</span>
           </div>
         </div>
       </div>
@@ -175,12 +182,10 @@ function renderIssues() {
 // ─── ACTIONS ──────────────────────────────────────────────────────────────────
 
 window.castVote = async function(issueId, currentVotes, currentLocalVoteState) {
-  // Optimistic UI Update
   const isCurrentlyUpvoted = currentLocalVoteState === 1;
-  const newVoteDelta = isCurrentlyUpvoted ? -1 : 1; // Toggle
+  const newVoteDelta = isCurrentlyUpvoted ? -1 : 1;
   const newTotalVotes = currentVotes + newVoteDelta;
   
-  // Update local storage
   const localVotes = JSON.parse(localStorage.getItem('my_public_issues_votes') || '{}');
   if (isCurrentlyUpvoted) {
     delete localVotes[issueId];
@@ -189,7 +194,6 @@ window.castVote = async function(issueId, currentVotes, currentLocalVoteState) {
   }
   localStorage.setItem('my_public_issues_votes', JSON.stringify(localVotes));
 
-  // Update UI instantly
   const countSpan = document.getElementById(`count-${issueId}`);
   if (countSpan) countSpan.textContent = newTotalVotes;
   
@@ -199,18 +203,12 @@ window.castVote = async function(issueId, currentVotes, currentLocalVoteState) {
     else btn.classList.add('voted');
   }
 
-  // Update data array memory so re-renders don't flash back
   const issueRef = allIssues.find(i => i.id === issueId);
   if (issueRef) issueRef.votes = newTotalVotes;
 
-  // Background network request
   try {
     const supabase = window.supabaseClient;
-    // We fetch the current actual row first to avoid race condition overwrites 
-    // (though in a real production environment, an RPC function to increment would be better,
-    // but the prompt allows a simpler approach)
     
-    // Rpc approach (cleaner if available, but let's stick to update logic for public table)
     const { data: fetchRes, error: fetchErr } = await supabase
         .from('public_issues')
         .select('votes')
@@ -229,12 +227,11 @@ window.castVote = async function(issueId, currentVotes, currentLocalVoteState) {
     if (updateErr) throw updateErr;
   } catch (err) {
     console.error('Vote sync failed', err);
-    // Revert optimistic update locally on failure
     if (isCurrentlyUpvoted) localVotes[issueId] = 1;
     else delete localVotes[issueId];
     localStorage.setItem('my_public_issues_votes', JSON.stringify(localVotes));
     if (issueRef) issueRef.votes = currentVotes;
-    renderIssues(); // re-render to revert
+    renderIssues();
   }
 };
 
@@ -245,13 +242,16 @@ async function handleFormSubmit(e) {
   DOM.submitBtn.innerHTML = 'Submitting...';
   DOM.submitBtn.disabled = true;
 
+  const user = getCurrentUser();
+
   const data = {
     title: document.getElementById('issue-title').value,
     beach_location: document.getElementById('issue-beach').value,
     category: document.getElementById('issue-category').value,
     description: document.getElementById('issue-desc').value,
     status: 'open',
-    votes: 0
+    votes: 0,
+    user_id: user ? user.id : null // Link to profile if logged in
   };
 
   try {
@@ -260,19 +260,11 @@ async function handleFormSubmit(e) {
 
     const { error } = await supabase.from("public_issues").insert([data]);
 
-    if (error) {
-      console.error('[Issues] Insert error:', error.message);
-      throw error;
-    }
+    if (error) throw error;
 
-    // Reset form
     DOM.form.reset();
-    
-    // Show success toast
     showToast('Issue raised successfully!');
-
-    // Instantly refresh list
-    await loadIssues();
+    await loadIssuesWithProfiles();
 
   } catch (err) {
     console.error(err);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
-// Supabase configuration - Using the same credentials from auth.js
+// Supabase configuration
 const SUPABASE_URL = 'https://nbhabuzspifmsmyixlgr.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5iaGFidXpzcGlmbXNteWl4bGdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2ODgxNjEsImV4cCI6MjA5MjI2NDE2MX0.UW8qPnRpN-7mE9BiJKV1h0rDlKpKljKhViUu4OEHM7Y';
 
@@ -9,9 +9,11 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
 
 export default function CommunityIssues() {
   const [issues, setIssues] = useState([]);
+  const [beaches, setBeaches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
+  const [user, setUser] = useState(null);
   
   // Form State
   const [formData, setFormData] = useState({
@@ -22,26 +24,38 @@ export default function CommunityIssues() {
   });
 
   const categories = ['Pollution', 'Safety', 'Infrastructure', 'Wildlife', 'General'];
-  const beaches = ['Anjuna', 'Baga', 'Calangute', 'Candolim', 'Colva', 'Miramar', 'Palolem', 'Vagator'];
 
   useEffect(() => {
-    fetchIssues();
+    // Initial Auth check
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user || null);
+    });
+
+    supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+    });
+
+    fetchData();
   }, []);
 
-  async function fetchIssues() {
+  async function fetchData() {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("public_issues")
-        .select("*")
-        .order("votes", { ascending: false });
+      // Parallel load beaches and issues
+      const [beachRes, issueRes] = await Promise.all([
+        supabase.from('beaches').select('name').order('name'),
+        supabase.from('public_issues').select('*, profiles:user_id(display_name)').order('votes', { ascending: false })
+      ]);
 
-      if (error) throw error;
-      setIssues(data || []);
+      if (beachRes.error) throw beachRes.error;
+      if (issueRes.error) throw issueRes.error;
+
+      setBeaches(beachRes.data || []);
+      setIssues(issueRes.data || []);
       setError(null);
     } catch (err) {
       console.error("Fetch error:", err);
-      setError("Failed to load issues. Please try again later.");
+      setError("Failed to connect to database tables.");
     } finally {
       setLoading(false);
     }
@@ -59,13 +73,18 @@ export default function CommunityIssues() {
     try {
       const { error } = await supabase
         .from("public_issues")
-        .insert([{ ...formData, status: 'open', votes: 0 }]);
+        .insert([{ 
+          ...formData, 
+          status: 'open', 
+          votes: 0,
+          user_id: user?.id || null 
+        }]);
 
       if (error) throw error;
 
       setFormData({ title: '', beach_location: '', category: 'Pollution', description: '' });
       showToast("Issue raised successfully!");
-      fetchIssues();
+      fetchData(); // Refresh list and potentially beaches
     } catch (err) {
       console.error("Submit error:", err);
       alert("Failed to submit issue.");
@@ -73,23 +92,19 @@ export default function CommunityIssues() {
   };
 
   const handleVote = async (id, currentVotes) => {
-    // Optimistic UI Update
     const localVotes = JSON.parse(localStorage.getItem('react_issues_votes') || '{}');
     const hasVoted = localVotes[id] === 1;
     const delta = hasVoted ? -1 : 1;
     const newVotes = currentVotes + delta;
 
-    // Update local state instantly
     setIssues(prev => prev.map(issue => 
       issue.id === id ? { ...issue, votes: newVotes } : issue
     ));
 
-    // Update local storage
     if (hasVoted) delete localVotes[id];
     else localVotes[id] = 1;
     localStorage.setItem('react_issues_votes', JSON.stringify(localVotes));
 
-    // Sync with DB
     try {
       const { error } = await supabase
         .from("public_issues")
@@ -99,7 +114,6 @@ export default function CommunityIssues() {
       if (error) throw error;
     } catch (err) {
       console.error("Vote error:", err);
-      // Revert if failed
       setIssues(prev => prev.map(issue => 
         issue.id === id ? { ...issue, votes: currentVotes } : issue
       ));
@@ -116,13 +130,20 @@ export default function CommunityIssues() {
       <div className="max-w-6xl mx-auto">
         
         {/* Header */}
-        <header className="mb-12 text-center md:text-left">
-          <h1 className="text-4xl md:text-5xl font-black mb-4 bg-gradient-to-r from-orange-400 via-rose-400 to-teal-400 bg-clip-text text-transparent">
-            Community Issues
-          </h1>
-          <p className="text-slate-400 text-lg max-w-2xl">
-            Report hazards, pollution, and infrastructure problems. Help protect our coastlines.
-          </p>
+        <header className="mb-12 flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="text-center md:text-left">
+            <h1 className="text-4xl md:text-5xl font-black mb-4 bg-gradient-to-r from-orange-400 via-rose-400 to-teal-400 bg-clip-text text-transparent">
+              Community Issues
+            </h1>
+            <p className="text-slate-400 text-lg max-w-2xl">
+              Connected to <b>{beaches.length}</b> beaches and <b>{issues.length}</b> reported issues.
+            </p>
+          </div>
+          {user && (
+            <div className="bg-slate-900/50 border border-slate-800 px-4 py-2 rounded-xl text-sm text-slate-400">
+              Logged in as <span className="text-teal-400 font-bold">{user.email.split('@')[0]}</span>
+            </div>
+          )}
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
@@ -137,7 +158,6 @@ export default function CommunityIssues() {
             </h2>
 
             {loading ? (
-              // Skeleton Loader
               <div className="space-y-4">
                 {[1, 2, 3].map(n => (
                   <div key={n} className="bg-slate-900/50 border border-slate-800 p-6 rounded-2xl animate-pulse flex gap-6">
@@ -161,10 +181,11 @@ export default function CommunityIssues() {
               <div className="space-y-4">
                 {issues.map(issue => {
                   const hasVoted = JSON.parse(localStorage.getItem('react_issues_votes') || '{}')[issue.id] === 1;
+                  const reporterName = issue.profiles?.display_name || 'Anonymous User';
+                  
                   return (
                     <div key={issue.id} className={`group relative bg-slate-900/40 border ${issue.votes >= 10 ? 'border-orange-500/30 shadow-[0_0_20px_rgba(249,115,22,0.05)]' : 'border-slate-800'} p-6 rounded-2xl transition-all hover:bg-slate-900/60 flex gap-6`}>
                       
-                      {/* Voting */}
                       <div className="flex flex-col items-center">
                         <button 
                           onClick={() => handleVote(issue.id, issue.votes)}
@@ -175,7 +196,6 @@ export default function CommunityIssues() {
                         </button>
                       </div>
 
-                      {/* Content */}
                       <div className="flex-1">
                         <div className="flex justify-between items-start mb-2">
                           <h3 className="text-xl font-bold">{issue.title}</h3>
@@ -198,8 +218,9 @@ export default function CommunityIssues() {
                           </p>
                         )}
 
-                        <div className="text-[10px] text-slate-600 font-bold uppercase tracking-widest">
-                          Reported {new Date(issue.created_at).toLocaleDateString()}
+                        <div className="flex justify-between items-center text-[10px] text-slate-600 font-bold uppercase tracking-widest">
+                          <span>Reported by <b className="text-slate-500">{reporterName}</b></span>
+                          <span>{new Date(issue.created_at).toLocaleDateString()}</span>
                         </div>
                       </div>
                     </div>
@@ -213,7 +234,7 @@ export default function CommunityIssues() {
           <div className="lg:col-span-1">
             <div className="sticky top-12 bg-slate-900/60 border border-slate-800 p-8 rounded-3xl backdrop-blur-xl">
               <h2 className="text-2xl font-black mb-2">Raise an Issue</h2>
-              <p className="text-slate-400 text-sm mb-8">Seen something wrong? Let the community know.</p>
+              <p className="text-slate-400 text-sm mb-8">Choose from <b>{beaches.length}</b> verified beach locations.</p>
 
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
@@ -225,7 +246,7 @@ export default function CommunityIssues() {
                     onChange={handleInputChange}
                     required
                     placeholder="e.g. Excessive plastic at Anjuna"
-                    className="w-100 bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500/50 transition-all"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500/50 transition-all"
                   />
                 </div>
 
@@ -239,7 +260,7 @@ export default function CommunityIssues() {
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-100 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500/50 transition-all appearance-none"
                   >
                     <option value="" disabled>Select a beach</option>
-                    {beaches.map(b => <option key={b} value={b}>{b}</option>)}
+                    {beaches.map(b => <option key={b.name} value={b.name}>{b.name}</option>)}
                   </select>
                 </div>
 
@@ -279,7 +300,6 @@ export default function CommunityIssues() {
         </div>
       </div>
 
-      {/* Toast */}
       {toast && (
         <div className="fixed bottom-8 right-8 bg-emerald-500 text-slate-950 px-6 py-4 rounded-2xl font-black shadow-2xl animate-bounce">
           {toast}
