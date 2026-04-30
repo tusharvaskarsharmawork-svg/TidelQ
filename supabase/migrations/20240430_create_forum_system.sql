@@ -218,9 +218,73 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
 
+-- 8. Community Issues Table (Public Forum)
+create table if not exists public.community_issues (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references auth.users not null,
+  beach_id text references public.beaches(id) on delete cascade not null,
+  title text not null,
+  description text not null,
+  category text not null check (category in ('Pollution', 'Infrastructure', 'Safety', 'Access', 'Other')),
+  status text default 'OPEN' check (status in ('OPEN', 'IN PROGRESS', 'RESOLVED')),
+  created_at timestamp with time zone default now(),
+  updated_at timestamp with time zone default now()
+);
+
+-- 9. Community Issue Votes Table
+create table if not exists public.community_issue_votes (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid references auth.users not null,
+  issue_id uuid references public.community_issues(id) on delete cascade not null,
+  created_at timestamp with time zone default now(),
+  unique(user_id, issue_id)
+);
+
+-- Indexes for Community Issues
+create index if not exists idx_community_issues_beach_id on public.community_issues(beach_id);
+create index if not exists idx_community_issues_category on public.community_issues(category);
+create index if not exists idx_community_issues_status on public.community_issues(status);
+create index if not exists idx_community_issue_votes_issue_id on public.community_issue_votes(issue_id);
+
+-- RLS for Community Issues
+alter table public.community_issues enable row level security;
+alter table public.community_issue_votes enable row level security;
+
+-- Community Issues Policies
+drop policy if exists "Community issues are viewable by everyone" on public.community_issues;
+create policy "Community issues are viewable by everyone" on public.community_issues
+  for select using (true);
+
+drop policy if exists "Users can create community issues" on public.community_issues;
+create policy "Users can create community issues" on public.community_issues
+  for insert with check (auth.uid() = user_id);
+
+drop policy if exists "Authors can update their own issues" on public.community_issues;
+create policy "Authors can update their own issues" on public.community_issues
+  for update using (auth.uid() = user_id);
+
+-- Community Issue Votes Policies
+drop policy if exists "Users can see all votes" on public.community_issue_votes;
+create policy "Users can see all votes" on public.community_issue_votes
+  for select using (true);
+
+drop policy if exists "Users can manage their own votes" on public.community_issue_votes;
+create policy "Users can manage their own votes" on public.community_issue_votes
+  for all using (auth.uid() = user_id);
+
+-- Function to handle voting toggle for community issues
+create or replace function public.toggle_issue_vote(p_issue_id uuid)
+returns void as $$
+begin
+  if exists (select 1 from public.community_issue_votes where user_id = auth.uid() and issue_id = p_issue_id) then
+    delete from public.community_issue_votes where user_id = auth.uid() and issue_id = p_issue_id;
+  else
+    insert into public.community_issue_votes (user_id, issue_id) values (auth.uid(), p_issue_id);
+  end if;
+end;
+$$ language plpgsql security definer;
+
 -- Realtime Configuration
--- Add tables to the 'supabase_realtime' publication
 begin;
-  -- Add to existing publication if it exists
-  -- This is usually done via dashboard, but we'll include it here
+  -- Add new tables to publication
 commit;
