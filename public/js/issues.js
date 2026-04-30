@@ -1,8 +1,8 @@
 /**
  * issues.js — Handles the Public Voting System for Coastal Issues
+ * Refactored to use the public_issues table directly via Supabase client.
  */
 
-// ─── INIT & LOCAL USER ────────────────────────────────────────────────────────
 // ─── AUTH & USER ─────────────────────────────────────────────────────────────
 const getCurrentUser = () => window.Auth?.user;
 
@@ -26,20 +26,20 @@ const DOM = {
 async function init() {
   console.log('[Issues] Initializing...');
   
-  // Load data first so the page isn't empty
-  try {
-    await Promise.all([loadBeaches(), loadIssues()]);
-  } catch (err) {
-    console.error('[Issues] Data load failed:', err);
-  }
-
-  // Then handle auth
+  // Handle auth
   if (window.Auth) {
     try {
       await Auth.init();
     } catch (err) {
       console.error('[Issues] Auth init failed:', err);
     }
+  }
+
+  // Load data
+  try {
+    await Promise.all([loadBeaches(), loadIssues()]);
+  } catch (err) {
+    console.error('[Issues] Data load failed:', err);
   }
 
   DOM.filterCat?.addEventListener('change', (e) => {
@@ -55,7 +55,6 @@ async function loadBeaches() {
     const res = await fetch('/assets/beaches.json');
     const data = await res.json();
     
-    // Check if it's a FeatureCollection (GeoJSON) or array
     if (data.type === 'FeatureCollection' && Array.isArray(data.features)) {
       allBeaches = data.features.map(f => f.properties);
     } else {
@@ -64,27 +63,50 @@ async function loadBeaches() {
 
     allBeaches.sort((a,b) => a.name.localeCompare(b.name));
     
-    // Populate select
-    DOM.beachSelect.innerHTML = `<option value="" disabled selected>Select Beach</option>` + 
-      allBeaches.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+    if (DOM.beachSelect) {
+      DOM.beachSelect.innerHTML = `<option value="" disabled selected>Select Beach</option>` + 
+        allBeaches.map(b => `<option value="${b.name}">${b.name}</option>`).join('');
+    }
   } catch (err) {
     console.error('Failed to load beaches JSON', err);
   }
 }
 
-function getBeachName(id) {
-  const b = allBeaches.find(x => x.id === id);
-  return b ? b.name : id;
-}
-
 async function loadIssues() {
+  // Show skeleton loading state
+  DOM.feed.innerHTML = `
+    <div class="issue-card animate-pulse flex gap-5">
+      <div class="w-16 h-20 bg-[rgba(255,255,255,0.05)] rounded-xl"></div>
+      <div class="flex-1 space-y-3">
+        <div class="h-6 bg-[rgba(255,255,255,0.05)] rounded w-3/4"></div>
+        <div class="h-4 bg-[rgba(255,255,255,0.05)] rounded w-1/4"></div>
+        <div class="h-10 bg-[rgba(255,255,255,0.05)] rounded w-full"></div>
+      </div>
+    </div>
+  `;
+
   try {
-    const res = await fetch('/api/issues');
-    if (!res.ok) throw new Error('API failed');
-    allIssues = await res.json();
+    const supabase = window.supabaseClient;
+    if (!supabase) throw new Error("Supabase client not initialized.");
+
+    const { data, error } = await supabase
+      .from("public_issues")
+      .select("*")
+      .order("votes", { ascending: false });
+
+    if (error) {
+      console.error('[Issues] Supabase error:', error.message);
+      throw error;
+    }
+
+    allIssues = data || [];
     renderIssues();
   } catch (err) {
-    DOM.feed.innerHTML = `<div class="p-4 text-center text-[var(--coral)]">Failed to load issues. Ensure server is running.</div>`;
+    console.error('[Issues] Load error:', err);
+    DOM.feed.innerHTML = `
+      <div class="p-6 text-center bg-[rgba(248,113,113,0.1)] border border-[rgba(248,113,113,0.2)] rounded-xl text-[#f87171]">
+        Failed to load issues. Please try refreshing the page.
+      </div>`;
   }
 }
 
@@ -93,34 +115,32 @@ function renderIssues() {
     ? allIssues 
     : allIssues.filter(i => i.category === currentFilter);
 
-  DOM.count.textContent = filtered.length;
+  if (DOM.count) DOM.count.textContent = filtered.length;
 
   if (filtered.length === 0) {
-    DOM.feed.innerHTML = `<div class="text-center text-[var(--text-2)] py-10">No issues found. Raise one!</div>`;
+    DOM.feed.innerHTML = `<div class="text-center text-[var(--text-2)] py-10">No issues yet. Be the first to raise one!</div>`;
     return;
   }
 
+  // Use local storage for upvote state to provide visual feedback
+  const localVotes = JSON.parse(localStorage.getItem('my_public_issues_votes') || '{}');
+
   DOM.feed.innerHTML = filtered.map(issue => {
-    const isHighPriority = issue.vote_count >= 10;
+    const isHighPriority = issue.votes >= 10;
     const isTrendingClass = isHighPriority ? 'trending' : '';
     const statusClass = issue.status ? issue.status.toLowerCase().replace(' ', '') : 'open';
-    const statusText = issue.status || 'Open';
+    const statusText = issue.status || 'open';
 
-    // Check if current user has already voted on this mockingly
-    // Without full backend tracking who voted, we rely on localstorage + backend
-    // Since backend returns global count, we'll store local votes in localstorage to show active state
-    const localVotes = JSON.parse(localStorage.getItem('my_votes') || '{}');
     const myVote = localVotes[issue.id] || 0;
     const upvotedClass = myVote === 1 ? 'voted' : '';
-    const downvotedClass = myVote === -1 ? 'voted' : '';
 
     return `
       <div class="issue-card flex gap-4 ${isTrendingClass}" data-id="${issue.id}">
         <!-- Voting Col -->
         <div class="flex flex-col items-center gap-1">
-          <button class="vote-btn upvote ${upvotedClass}" onclick="castVote('${issue.id}', 1)">
+          <button class="vote-btn upvote ${upvotedClass}" onclick="castVote('${issue.id}', ${issue.votes}, ${myVote})">
             <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg>
-            <span class="font-bold text-lg mt-1" id="count-${issue.id}">${issue.vote_count}</span>
+            <span class="font-bold text-lg mt-1" id="count-${issue.id}">${issue.votes || 0}</span>
           </button>
         </div>
 
@@ -133,7 +153,7 @@ function renderIssues() {
           
           <div class="flex items-center gap-3 text-sm text-[var(--text-2)] mb-3">
             <div class="flex items-center gap-1">
-              <span>📍</span> <span>${escapeHTML(getBeachName(issue.beach_id))}</span>
+              <span>📍</span> <span>${escapeHTML(issue.beach_location || 'Unknown')}</span>
             </div>
             <div class="w-1 h-1 bg-[var(--text-3)] rounded-full"></div>
             <span class="category-chip">${escapeHTML(issue.category || 'General')}</span>
@@ -144,8 +164,7 @@ function renderIssues() {
           ${issue.description ? `<p class="text-[var(--text-2)] text-sm mb-3 whitespace-pre-wrap">${escapeHTML(issue.description)}</p>` : ''}
           
           <div class="text-xs text-[var(--text-3)] flex items-center justify-between">
-            <span>By ${escapeHTML(issue.creator_name || issue.created_by)}</span>
-            <span>${timeAgo(issue.created_at)}</span>
+            <span>Posted ${timeAgo(issue.created_at)}</span>
           </div>
         </div>
       </div>
@@ -155,38 +174,67 @@ function renderIssues() {
 
 // ─── ACTIONS ──────────────────────────────────────────────────────────────────
 
-window.castVote = async function(issueId, newVote) {
-  // Local state tracking
-  const localVotes = JSON.parse(localStorage.getItem('my_votes') || '{}');
-  const currentVote = localVotes[issueId] || 0;
+window.castVote = async function(issueId, currentVotes, currentLocalVoteState) {
+  // Optimistic UI Update
+  const isCurrentlyUpvoted = currentLocalVoteState === 1;
+  const newVoteDelta = isCurrentlyUpvoted ? -1 : 1; // Toggle
+  const newTotalVotes = currentVotes + newVoteDelta;
   
-  // Toggle off if clicking the same vote
-  const finalVote = currentVote === newVote ? 0 : newVote;
+  // Update local storage
+  const localVotes = JSON.parse(localStorage.getItem('my_public_issues_votes') || '{}');
+  if (isCurrentlyUpvoted) {
+    delete localVotes[issueId];
+  } else {
+    localVotes[issueId] = 1;
+  }
+  localStorage.setItem('my_public_issues_votes', JSON.stringify(localVotes));
 
-    const user = getCurrentUser();
-    if (!user) {
-      Auth?.showModal('signin');
-      return;
-    }
+  // Update UI instantly
+  const countSpan = document.getElementById(`count-${issueId}`);
+  if (countSpan) countSpan.textContent = newTotalVotes;
+  
+  const btn = countSpan?.closest('.vote-btn');
+  if (btn) {
+    if (isCurrentlyUpvoted) btn.classList.remove('voted');
+    else btn.classList.add('voted');
+  }
 
-    const res = await fetch('/api/issues/vote', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ issue_id: issueId, user_id: user.id, vote_type: finalVote })
-    });
-    if (!res.ok) throw new Error('API Error');
+  // Update data array memory so re-renders don't flash back
+  const issueRef = allIssues.find(i => i.id === issueId);
+  if (issueRef) issueRef.votes = newTotalVotes;
 
-    // Update local cache
-    if (finalVote === 0) delete localVotes[issueId];
-    else localVotes[issueId] = finalVote;
-    localStorage.setItem('my_votes', JSON.stringify(localVotes));
+  // Background network request
+  try {
+    const supabase = window.supabaseClient;
+    // We fetch the current actual row first to avoid race condition overwrites 
+    // (though in a real production environment, an RPC function to increment would be better,
+    // but the prompt allows a simpler approach)
+    
+    // Rpc approach (cleaner if available, but let's stick to update logic for public table)
+    const { data: fetchRes, error: fetchErr } = await supabase
+        .from('public_issues')
+        .select('votes')
+        .eq('id', issueId)
+        .single();
+        
+    if (fetchErr) throw fetchErr;
 
-    // Refetch and render
-    await loadIssues();
+    const actualNewTotal = (fetchRes.votes || 0) + newVoteDelta;
 
+    const { error: updateErr } = await supabase
+      .from('public_issues')
+      .update({ votes: actualNewTotal })
+      .eq('id', issueId);
+
+    if (updateErr) throw updateErr;
   } catch (err) {
-    console.error('Vote failed', err);
-    alert('Failed to register vote. Server may be down.');
+    console.error('Vote sync failed', err);
+    // Revert optimistic update locally on failure
+    if (isCurrentlyUpvoted) localVotes[issueId] = 1;
+    else delete localVotes[issueId];
+    localStorage.setItem('my_public_issues_votes', JSON.stringify(localVotes));
+    if (issueRef) issueRef.votes = currentVotes;
+    renderIssues(); // re-render to revert
   }
 };
 
@@ -197,44 +245,38 @@ async function handleFormSubmit(e) {
   DOM.submitBtn.innerHTML = 'Submitting...';
   DOM.submitBtn.disabled = true;
 
-  const user = getCurrentUser();
-  if (!user) {
-    Auth?.showModal('signin');
-    DOM.submitBtn.innerHTML = originalBtnHTML;
-    DOM.submitBtn.disabled = false;
-    return;
-  }
-
   const data = {
     title: document.getElementById('issue-title').value,
-    beach_id: document.getElementById('issue-beach').value,
+    beach_location: document.getElementById('issue-beach').value,
     category: document.getElementById('issue-category').value,
     description: document.getElementById('issue-desc').value,
-    created_by: user.id
+    status: 'open',
+    votes: 0
   };
 
   try {
-    const res = await fetch('/api/issues', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    if (!res.ok) throw new Error('API Error');
+    const supabase = window.supabaseClient;
+    if (!supabase) throw new Error("Supabase client not initialized.");
+
+    const { error } = await supabase.from("public_issues").insert([data]);
+
+    if (error) {
+      console.error('[Issues] Insert error:', error.message);
+      throw error;
+    }
 
     // Reset form
     DOM.form.reset();
     
-    // Automatically upvote own issue
-    const newIssue = await res.json();
-    if (newIssue && newIssue.id) {
-      await castVote(newIssue.id, 1);
-    } else {
-      await loadIssues();
-    }
+    // Show success toast
+    showToast('Issue raised successfully!');
+
+    // Instantly refresh list
+    await loadIssues();
 
   } catch (err) {
     console.error(err);
-    alert('Failed to submit issue.');
+    alert('Failed to submit issue. Please try again.');
   } finally {
     DOM.submitBtn.innerHTML = originalBtnHTML;
     DOM.submitBtn.disabled = false;
@@ -242,6 +284,18 @@ async function handleFormSubmit(e) {
 }
 
 // ─── UTILS ────────────────────────────────────────────────────────────────────
+
+function showToast(message) {
+  const toast = document.createElement('div');
+  toast.className = 'fixed bottom-4 right-4 bg-[#4ECDC4] text-gray-900 font-bold px-4 py-2 rounded shadow-lg z-50 transform transition-all duration-300 translate-y-0 opacity-100';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.classList.add('translate-y-10', 'opacity-0');
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
+}
 
 function escapeHTML(str) {
   if (!str) return '';

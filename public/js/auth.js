@@ -8,6 +8,7 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 // ─── Bootstrap Supabase client from CDN ──────────────────────────────────────
 const _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+window.supabaseClient = _sb;
 
 // ─── State ───────────────────────────────────────────────────────────────────
 let _currentUser = null;
