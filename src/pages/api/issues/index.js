@@ -1,4 +1,4 @@
-import { getIssues, createIssue } from '../../../lib/db';
+import { getIssues, createIssue } from '../../../lib/issues_db';
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
