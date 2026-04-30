@@ -141,10 +141,10 @@
     </div>
     <div class="flex items-center gap-4">
       <button onclick="signInLogic()" class="text-sm font-semibold text-[var(--text-2)] hover:text-white transition">Sign In</button>
-      <a href="dashboard.html" onclick="markVisited()" class="btn-glow bg-[rgba(78,205,196,0.1)] border border-[rgba(78,205,196,0.3)] text-[var(--seafoam)] px-5 py-2.5 rounded-full text-sm font-bold tracking-wide flex items-center gap-2">
+      <button onclick="handleLaunchApp()" class="btn-glow bg-[rgba(78,205,196,0.1)] border border-[rgba(78,205,196,0.3)] text-[var(--seafoam)] px-5 py-2.5 rounded-full text-sm font-bold tracking-wide flex items-center gap-2">
         Launch App
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
-      </a>
+      </button>
     </div>
   </nav>
 
@@ -174,9 +174,9 @@
       </p>
       
       <div class="flex flex-col sm:flex-row items-center gap-4 fade-up" style="transition-delay: 0.3s">
-        <a href="dashboard.html" class="btn-glow bg-[var(--seafoam)] text-black px-8 py-3.5 rounded-full font-bold text-lg hover:shadow-lg hover:shadow-[var(--seafoam)]/30 transition transform hover:-translate-y-1">
+        <button onclick="handleLaunchApp()" class="btn-glow bg-[var(--seafoam)] text-black px-8 py-3.5 rounded-full font-bold text-lg hover:shadow-lg hover:shadow-[var(--seafoam)]/30 transition transform hover:-translate-y-1">
           Launch App
-        </a>
+        </button>
         <button onclick="signUpLogic()" class="px-8 py-3.5 rounded-full font-bold text-lg text-white border border-[rgba(255,255,255,0.2)] hover:bg-[rgba(255,255,255,0.05)] transition">
           Join Community
         </button>
@@ -314,6 +314,14 @@
 
     function signUpLogic() {
       Auth?.showModal('signup');
+    }
+
+    function handleLaunchApp() {
+      if (Auth?.user) {
+        window.location.href = 'dashboard.html';
+      } else {
+        Auth?.showModal('signin');
+      }
     }
 
     // Fade-in Observer
