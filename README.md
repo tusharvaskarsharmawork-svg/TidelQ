@@ -15,15 +15,13 @@
 
 ---
 
-## 🖼️ Hero Image
-*(Placeholder for Hero Image)*
-`![TidelQ Dashboard](/docs/images/hero.png)`
+
 
 ---
 
 ## 🌐 Live Demo
 * **Live Website**: [https://tidelq.onrender.com/landing.html](https://tidelq.onrender.com/landing.html)
-* **GitHub Repository**: [https://github.com/your-team/antigravity](https://github.com/your-team/antigravity) *(Placeholder)*
+* **GitHub Repository**: [[https://github.com/your-team/antigravit](https://github.com/tusharvaskarsharmawork-svg/TidelQ.git)]([https://github.com/your-team/antigravity](https://github.com/tusharvaskarsharmawork-svg/TidelQ.git)) *TidelQ*
 
 ---
 
@@ -342,12 +340,6 @@ Ensure the database URL matches your deployed environment. Adjust Supabase "Allo
 
 ---
 
-## ⚠️ Known Issues
-
-1. **HTML/Next.js Hybrid Routing**: Because the frontend relies entirely on static HTML in the `public` folder rather than Next.js `pages`/`app` routing, local development requires explicitly appending `.html` (e.g., `localhost:3000/dashboard.html`).
-2. **Copernicus Latency**: The satellite data API can experience latency spikes, relying heavily on the application's mocked fallback logic when timeouts occur.
-
----
 
 ## 🤝 Contributing
 
@@ -368,43 +360,9 @@ Distributed under the MIT License. See `LICENSE` for more information.
 ## 🙌 Credits
 * Developed for **Susegad Sprint 2026**.
 * Special thanks to **Mapbox**, **Supabase**, and the **Copernicus Marine Environment Monitoring Service**.
+* TEAM - NEURAL PAIR
+* - AKANKSHA KUMARI (akanksha312kumari@gmail.com)
+  - TUSHAR VASKAR SHARMA (tusharvaskarshama@gmail.com)
 
 ---
 
-## 📊 Repository Statistics
-
-* **Total Files**: ~15 Core Files
-* **Languages**: JavaScript, HTML, CSS, SQL
-* **API Endpoints**: 6 Core Routes
-* **Database Tables**: 11
-* **Dependencies**: Next.js, Supabase JS, OpenAI SDK, Anthropic SDK, Formidable
-
----
-
-## 🧑‍💻 Developer Notes
-
-**Architectural Decisions**: 
-We explicitly decoupled a modern Next.js API Backend from a lightweight, framework-agnostic frontend. This allowed us to circumvent React lifecycle bottlenecks when interacting directly with WebGL/Mapbox, while retaining the security and ease of serverless API routes for complex LLM chaining and Supabase authentication.
-
----
-
-## 💯 Final Evaluation
-
-* **Architecture: 8/10**
-  * *Justification*: Smart decoupling of heavy WebGL rendering from Next.js hydration, but mixing static HTML with Next.js APIs is unconventional and slightly limits deployment flexibility.
-* **Documentation: 9/10**
-  * *Justification*: Thoroughly documented schema, rich markdown rationale, and clear Devfolio submissions exist in the repo.
-* **Scalability: 8/10**
-  * *Justification*: Serverless API routes and Supabase DB scale beautifully, though the fire-and-forget scoring mechanism might require a proper task queue (like Inngest) under heavy load.
-* **Security: 8/10**
-  * *Justification*: Excellent use of Supabase RLS and payload limits. Deductions for relying on client-provided severity during Vision AI failovers.
-* **Maintainability: 7/10**
-  * *Justification*: Vanilla JS scale-up can result in "spaghetti code". Lack of TypeScript means refactoring the API data structures will be error-prone.
-* **Performance: 9/10**
-  * *Justification*: Extremely lightweight DOM, asynchronous heavy lifting, and CDN caching guarantee high frame rates and fast First Contentful Paint.
-* **UI/UX: 9/10**
-  * *Justification*: Premium aesthetic ("Susegad" design), highly interactive Mapbox integrations, and seamless mobile report flows.
-* **Code Quality: 8/10**
-  * *Justification*: Clean SQL migrations and modularized backend functions, though frontend logic could benefit from module bundlers.
-* **Overall: 8.25/10**
-  * *Justification*: A highly impressive, complex hackathon MVP that expertly orchestrates multiple APIs (Maps, Satellites, LLMs, Vision AI) into a polished, socially impactful product.
