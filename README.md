@@ -237,7 +237,19 @@ erDiagram
 
 ---
 
-## 🚀 Installation
+## 🚀 Live Demo & Deployment (No Installation Required)
+
+The application is **fully deployed and live**, meaning there is no need for local installation or setup to access and use TidelQ.
+
+### 🌐 Accessing the Live App
+Simply open the live URL in your web browser:
+* **Live Website**: [https://tidelq.onrender.com/landing.html](https://tidelq.onrender.com/landing.html)
+
+---
+
+## 🛠️ Local Development (Optional)
+
+If you wish to run the project locally for development or customization purposes, follow the steps below:
 
 ### 1. Clone the repository
 ```bash
