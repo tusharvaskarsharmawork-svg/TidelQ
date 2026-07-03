@@ -21,7 +21,7 @@
 
 ## 🌐 Live Demo
 * **Live Website**: [https://tidelq.onrender.com/landing.html](https://tidelq.onrender.com/landing.html)
-* **GitHub Repository**: [[https://github.com/your-team/antigravit](https://github.com/tusharvaskarsharmawork-svg/TidelQ.git)]([https://github.com/your-team/antigravity](https://github.com/tusharvaskarsharmawork-svg/TidelQ.git)) *TidelQ*
+* **GitHub Repository**: [[https://github.com/tusharvaskarsharmawork-svg/TidelQ.git](https://github.com/tusharvaskarsharmawork-svg/TidelQ.git)]*TidelQ*
 
 ---
 
